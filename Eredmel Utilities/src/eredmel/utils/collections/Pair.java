@@ -1,4 +1,4 @@
-package eredmel.collections;
+package eredmel.utils.collections;
 
 
 import java.util.Map.Entry;

@@ -5,14 +5,14 @@ import static org.junit.Assert.assertEquals;
 
 import java.io.IOException;
 import java.net.URISyntaxException;
-import java.nio.file.Files;
 import java.nio.file.Paths;
-import java.util.List;
 
 import org.junit.Test;
 
-import eredmel.collections.Pair;
+import eredmel.preprocessor.EredmelLine;
 import eredmel.preprocessor.EredmelPreprocessor;
+import eredmel.preprocessor.NumberedLine;
+import eredmel.preprocessor.ReadFile;
 
 public class NormalizerTest {
 	@Test
@@ -57,26 +57,27 @@ public class NormalizerTest {
 	}
 	public static void testNormalization(int expectedTabwidth, String... paths) {
 		try {
-			List<String> original = readAll(paths[0]);
-			List<String> normExpected = readAll(paths.length == 1 ? "normalized.edmh"
+			ReadFile<NumberedLine, Void> original = readAll(paths[0]);
+			ReadFile<NumberedLine, Void> normExpected = readAll(paths.length == 1 ? "normalized.edmh"
 					: paths[1]);
-			Pair<List<String>, Integer> normActual = EredmelPreprocessor
+			ReadFile<EredmelLine, Integer> normActual = EredmelPreprocessor
 					.normalize(original);
-			assertEquals("File Size", normExpected.size(), normActual
-					.getKey().size());
-			assertEquals("Tabwidth", expectedTabwidth, normActual.getValue()
-					.intValue());
-			for (int i = 0; i < normExpected.size(); i++) {
-				assertEquals(format("Line %s:", i), normExpected.get(i),
-						normActual.getKey().get(i));
+			assertEquals("File Size", normExpected.nLines(),
+					normActual.nLines());
+			assertEquals("Tabwidth", expectedTabwidth,
+					normActual.tabwidth.intValue());
+			for (int i = 0; i < normExpected.nLines(); i++) {
+				assertEquals(format("Line %s:", i),
+						normExpected.lineAt(i).line, normActual.lineAt(i)
+								.display());
 			}
 		} catch (IOException | URISyntaxException e) {
 			throw new AssertionError(e);
 		}
 	}
-	public static List<String> readAll(String path) throws IOException,
-			URISyntaxException {
-		return Files.readAllLines(Paths.get(NormalizerTest.class.getResource(
-				path).toURI()));
+	public static ReadFile<NumberedLine, Void> readAll(String path)
+			throws IOException, URISyntaxException {
+		return EredmelPreprocessor.readFile(Paths
+				.get("eg/normalizer/" + path));
 	}
 }
