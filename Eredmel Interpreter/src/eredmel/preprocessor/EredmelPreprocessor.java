@@ -9,7 +9,7 @@ import java.util.List;
 import java.util.Optional;
 import java.util.stream.Collectors;
 
-import eredmel.logger.EredmelLogger;
+import eredmel.logger.EredmelMessage;
 import eredmel.regex.Matcher;
 import eredmel.regex.Pattern;
 import eredmel.utils.io.IOUtils;
@@ -101,8 +101,8 @@ public final class EredmelPreprocessor {
 			} else {
 				// take a guess
 				tabwidth = gcf;
-				EredmelLogger.get().guessAtTabwidth(tabwidth,
-						toNormalize.path);
+				EredmelMessage.guessAtTabwidth(tabwidth, toNormalize.path)
+						.log();
 			}
 		} else {
 			tabwidth = twProc.tabwidth.get();
@@ -161,7 +161,7 @@ public final class EredmelPreprocessor {
 		try {
 			normalizedFile = normalize(readFile(toRead));
 		} catch (IOException e) {
-			EredmelLogger.get().errorLoadingFile(e, toRead);
+			EredmelMessage.errorLoadingFile(e, toRead).log();
 			// should be unreachable since this is a fatal error. Simply
 			// rethrow the error
 			throw new RuntimeException(e);
@@ -177,8 +177,8 @@ public final class EredmelPreprocessor {
 			Optional<Path> optPath = IOUtils.resolve(toRead, linkedLibs,
 					mat.group("path"));
 			if (!optPath.isPresent()) {
-				EredmelLogger.get().unresolvedInclusion(mat.group("path"),
-						normalizedFile.path, i);
+				EredmelMessage.unresolvedInclusion(mat.group("path"),
+						normalizedFile.path, i).log();
 				continue;
 			}
 			withInclusions.addAll(loadFile(optPath.get(), linkedFiles,
