@@ -3,10 +3,7 @@ package eredmel.preprocessor;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.List;
-import java.util.Optional;
+import java.util.*;
 import java.util.stream.Collectors;
 
 import eredmel.logger.EredmelMessage;
@@ -22,35 +19,33 @@ import eredmel.utils.math.MathUtils;
  * @author Kavi Gupta
  */
 public final class EredmelPreprocessor {
-	private EredmelPreprocessor() {}
 	/**
-	 * Matches a tabbed line, which contains any number of tabs and spaces and
-	 * text at the end
+	 * Utility class non-constructor
 	 */
-	private static final Pattern TABBED_LINE = Pattern
-			.compile("^(?<indt>[\t ]*)(?<rest>.*)$");
+	private EredmelPreprocessor() {}
 	/**
 	 * Matches a tabwidth statement at the top of the document, which has the
 	 * form {@code ##tabwidth = theTabwidth}, with any number of spaces
-	 * permissible between segments
+	 * permissible between tokens or before the statement
 	 */
 	private static final Pattern TABWIDTH = Pattern
 			.compile("^\\s*##\\s*tabwidth\\s*=\\s*(?<tabwidth>\\d+)\\s*$");
 	/**
 	 * Matches an inclusion statement, which has the form
-	 * {@code ##include pathToInclude}, with any number of spaces permissible
+	 * {@code ##include "pathToInclude"}, with any number of spaces permissible
 	 * between segments
 	 */
 	private static final Pattern INCLUDE = Pattern
 			.compile("^\\s*##\\s*include\\s*\"(?<path>.+)\"\\s*$");
 	/**
-	 * Reads a file into memory
+	 * Reads a file into memory, and assign numbers to lines
 	 * 
 	 * @param path
 	 *        the file to read
 	 * @return
 	 *         the read file
 	 * @throws IOException
+	 *         if there was an error in reading the file
 	 */
 	public static ReadFile<NumberedLine, Void> readFile(Path path)
 			throws IOException {
@@ -71,26 +66,26 @@ public final class EredmelPreprocessor {
 	 * The normalizer then goes through each line and counts the number of tabs
 	 * and spaces which it contains. If tabwidth was not defined, it tries to
 	 * infer it by taking the Greatest Common Factor of the number of spaces in
-	 * each line. Note that this is not always accurate and will emit an error.
+	 * each line. Note that this is not always accurate and will emit a
+	 * high-level warning.
 	 * 
 	 * The normalizer then replaces the {@code n} spaces at the beginning of
 	 * each line with {@code round(n/t)} spaces, where {@code t} is the
-	 * tabwidth.
+	 * tabwidth. It will round off non-standard tabwidths, emitting a warning
+	 * when it does so
 	 * 
 	 * @param toNormalize
-	 *        The text to normalize, in the form of a list of lines
+	 *        The text to normalize
 	 * @return The normalized document, in the form of a list of lines. The
-	 *         tabwidth returned is either one explicitly declared, implicitly
-	 *         calculated, or (when there are no declaring spaces), 4.
-	 *         (normalizedDocument, tabwidth)
+	 *         tabwidth attached to the document is either one explicitly
+	 *         declared, implicitly calculated, or (when there are no declaring
+	 *         spaces), 4.
 	 */
 	public static ReadFile<EredmelLine, Integer> normalize(
 			ReadFile<NumberedLine, Void> toNormalize) {
-		ReadFile<NumberedLine, Optional<Integer>> twProc = processTabwidth(toNormalize);
-		// (restOfLine, (spaces, tabs))
-		ReadFile<MeasuredLine, Void> countedStart = countWhitespace(twProc);
+		ReadFile<MeasuredLine, Optional<Integer>> countedStart = countWhitespace(processTabwidth(toNormalize));
 		int tabwidth;
-		if (!twProc.tabwidth.isPresent()) {
+		if (!countedStart.tabwidth.isPresent()) {
 			int gcf = 0;
 			for (MeasuredLine line : countedStart.lines)
 				gcf = MathUtils.gcf(gcf, line.spaces);
@@ -105,7 +100,7 @@ public final class EredmelPreprocessor {
 						.log();
 			}
 		} else {
-			tabwidth = twProc.tabwidth.get();
+			tabwidth = countedStart.tabwidth.get();
 		}
 		List<EredmelLine> normalized = new ArrayList<>(countedStart.nLines());
 		for (MeasuredLine line : countedStart.lines) {
@@ -117,46 +112,81 @@ public final class EredmelPreprocessor {
 	}
 	/**
 	 * 
-	 * Converts tabs to spaces at the beginning of lines. This method is not
-	 * used by the preprocessor, but may be run at the end of a preprocessor
-	 * cycle to repatriate spaces into a non-Eredmel source file.
+	 * Loads these Eredmel File into memory, normalizes it, and includes other
+	 * files by loading them and dumping them into the file.
 	 * 
-	 * @param lines
-	 *        the file lines
-	 * @param tabwidth
-	 *        the number of spaces to use in replacing each tab
-	 * @return
-	 *         the modified lines; the original list is not modified.
+	 * If a file is not found, an error occurs in reading the file, or a
+	 * circular reference is found, a warning or fatal error is raised.
+	 * 
+	 * @param toRead
+	 *        The files to load
+	 * @param linkedLibs
+	 *        The paths where inclusions can be found, not including the
+	 *        current working directory, which is designated the first point in
+	 *        the search path
+	 * @return The files in memory, loaded completely with all other files
+	 *         included completely, guaranteed to be the same size as
+	 *         {@code toRead}
 	 */
-	public static List<String> leadingTabsToSpaces(List<String> lines,
-			int tabwidth) {
-		char[] spacesC = new char[tabwidth];
-		Arrays.fill(spacesC, ' ');
-		String spaces = new String(spacesC);
-		return lines
-				.stream()
-				.map(TABBED_LINE::matcher)
-				.map(mat -> {
-					mat.find(); // assumes find successful
-					return mat.group("indt").replace("\t", spaces)
-							+ mat.group("rest");
-				}).collect(Collectors.toList());
+	public static List<ReadFile<EredmelLine, Integer>> loadFiles(
+			List<Path> toRead, List<Path> linkedLibs) {
+		Set<ReadFile<EredmelLine, Integer>> allLoaded = new HashSet<>();
+		List<ReadFile<EredmelLine, Integer>> requestedLoaded = new ArrayList<>();
+		for (Path individual : toRead) {
+			requestedLoaded.add(loadFile(individual, linkedLibs, allLoaded,
+					new ArrayList<>()));
+		}
+		return requestedLoaded;
 	}
 	/**
-	 * @param path
-	 *        The file to manage inclusion on
+	 * 
+	 * Loads a single Eredmel File into memory, normalizes it, and includes
+	 * other
+	 * files by loading them and dumping them into the file.
+	 * 
+	 * If a file is not found, an error occurs in reading the file, or a
+	 * circular reference is found, a warning or fatal error is raised.
+	 * 
+	 * @param toRead
+	 *        The file to load
 	 * @param linkedLibs
-	 *        The paths where the files can be found. This should include the
-	 *        current file directory as well
-	 * @return The file with all the included other files
+	 *        The paths where inclusions can be found.
+	 * @return The file in memory, loaded completely with all other files
+	 *         included completely
 	 */
-	public static LinkedFile loadFile(Path toRead, List<Path> linkedLibs) {
-		return loadFile(toRead, new ArrayList<>(), linkedLibs);
+	public static ReadFile<EredmelLine, Integer> loadFile(Path toRead,
+			List<Path> linkedLibs) {
+		return loadFiles(Arrays.asList(toRead), linkedLibs).get(0);
 	}
-	private static LinkedFile loadFile(Path toRead,
-			List<LinkedFile> linkedFiles, List<Path> linkedLibs) {
-		for (LinkedFile linkedFile : linkedFiles)
+	/**
+	 * @param toRead
+	 *        the file to read
+	 * @param loadedFiles
+	 *        a set of loaded files, which is added to every time a file is
+	 *        loaded. A short-circuit return is utilized to prevent the same
+	 *        file being loaded multiple times
+	 * @param linkedLibs
+	 *        the paths where inclusions can be found.
+	 * @param inclusionChain
+	 *        the chain of inclusions needed to get to this point
+	 * @return the file loaded into memory
+	 * 
+	 */
+	private static ReadFile<EredmelLine, Integer> loadFile(Path toRead,
+			List<Path> linkedLibs,
+			Set<ReadFile<EredmelLine, Integer>> loadedFiles,
+			List<Path> inclusionChain) {
+		for (ReadFile<EredmelLine, Integer> linkedFile : loadedFiles)
 			if (linkedFile.path.equals(toRead)) return linkedFile;
+		int index = inclusionChain.indexOf(toRead);
+		if (index >= 0) {
+			List<Path> circle = inclusionChain.subList(index,
+					inclusionChain.size());
+			circle.add(toRead);
+			EredmelMessage.circularInclusionLink(circle, toRead, 0);
+		}
+		inclusionChain = new ArrayList<>(inclusionChain);
+		inclusionChain.add(toRead);
 		ReadFile<EredmelLine, Integer> normalizedFile;
 		try {
 			normalizedFile = normalize(readFile(toRead));
@@ -177,32 +207,26 @@ public final class EredmelPreprocessor {
 			Optional<Path> optPath = IOUtils.resolve(toRead, linkedLibs,
 					mat.group("path"));
 			if (!optPath.isPresent()) {
-				EredmelMessage.unresolvedInclusion(mat.group("path"),
+				EredmelMessage.inclusionNotFound(mat.group("path"),
 						normalizedFile.path, i).log();
 				continue;
 			}
-			withInclusions.addAll(loadFile(optPath.get(), linkedFiles,
-					linkedLibs).lines);
+			withInclusions.addAll(loadFile(optPath.get(), linkedLibs,
+					loadedFiles, inclusionChain).lines);
 		}
-		LinkedFile file = new LinkedFile(withInclusions, toRead,
-				normalizedFile.tabwidth);
-		linkedFiles.add(file);
+		ReadFile<EredmelLine, Integer> file = new ReadFile<EredmelLine, Integer>(
+				withInclusions, toRead, normalizedFile.tabwidth);
+		loadedFiles.add(file);
 		return file;
 	}
-	private static ReadFile<MeasuredLine, Void> countWhitespace(
-			ReadFile<NumberedLine, Optional<Integer>> norm) {
-		List<MeasuredLine> countedStart = new ArrayList<>();
-		for (NumberedLine line : norm.lines) {
-			Matcher mat = TABBED_LINE.matcher(line.line);
-			mat.find();
-			int spaces = 0;
-			String indt = mat.group("indt");
-			for (char c : indt.toCharArray())
-				if (c == ' ') spaces++;
-			countedStart.add(new MeasuredLine(norm.path, line.lineNumber,
-					mat.group("rest"), spaces, indt.length() - spaces));
-		}
-		return new ReadFile<>(countedStart, norm.path, null);
+	/**
+	 * Measures each line for how many tabs and spaces it has
+	 */
+	private static <T> ReadFile<MeasuredLine, T> countWhitespace(
+			ReadFile<NumberedLine, T> norm) {
+		return new ReadFile<>(norm.lines.stream()
+				.map(NumberedLine::countWhitespace)
+				.collect(Collectors.toList()), norm.path, norm.tabwidth);
 	}
 	/**
 	 * Gets the tabwidth and consumes a tabwidth statement

@@ -9,8 +9,8 @@ import java.util.ArrayList;
 
 import org.junit.Test;
 
+import eredmel.preprocessor.EredmelLine;
 import eredmel.preprocessor.EredmelPreprocessor;
-import eredmel.preprocessor.LinkedFile;
 import eredmel.preprocessor.NumberedLine;
 import eredmel.preprocessor.ReadFile;
 
@@ -31,11 +31,11 @@ public class InclusionTest {
 		} catch (IOException e) {
 			throw new RuntimeException(e);
 		}
-		LinkedFile normActual = EredmelPreprocessor.loadFile(
-				Paths.get(relative(path)), new ArrayList<>());
+		ReadFile<EredmelLine, Integer> normActual = EredmelPreprocessor
+				.loadFile(Paths.get(relative(path)), new ArrayList<>());
 		for (int i = 0; i < normExpected.nLines(); i++) {
 			assertEquals(format("Line %s:", i), normExpected.lineAt(i).line,
-					normActual.lineAt(i).display());
+					normActual.lineAt(i).displayWithTabs());
 		}
 		assertEquals("File Size", normExpected.nLines(), normActual.nLines());
 	}

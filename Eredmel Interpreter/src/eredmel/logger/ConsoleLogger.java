@@ -1,12 +1,37 @@
 package eredmel.logger;
 
+/**
+ * Logger that deposits all of its log messages onto the console
+ * 
+ * @author Kavi Gupta
+ */
 public class ConsoleLogger extends EredmelLogger {
+	/**
+	 * The default Console Logger. This logger will log all warnings, use
+	 * {@code System.err} for High level warnings and above, and die on Fatal
+	 * errors
+	 */
 	public static final ConsoleLogger DEFAULT = new ConsoleLogger(
-			EredmelMessage.LoggingLevel.LOW, EredmelMessage.LoggingLevel.HIGH, EredmelMessage.LoggingLevel.FATAL);
+			EredmelMessage.LoggingLevel.LOW,
+			EredmelMessage.LoggingLevel.HIGH,
+			EredmelMessage.LoggingLevel.FATAL);
 	private final EredmelMessage.LoggingLevel printOut;
 	private final EredmelMessage.LoggingLevel printErr;
 	private final EredmelMessage.LoggingLevel exit;
-	public ConsoleLogger(EredmelMessage.LoggingLevel printOut, EredmelMessage.LoggingLevel printErr,
+	/**
+	 * @param printOut
+	 *        The minimum level at which logs should be printed
+	 * @param printErr
+	 *        The minimum level at which logs should be printed to
+	 *        {@code System.err}. This must be greater than or equal to
+	 *        {@code printOut}
+	 * @param exit
+	 *        The minimum level at which logs should lead to the program's
+	 *        termination This must be greater than or equal to
+	 *        {@code printErr}
+	 */
+	public ConsoleLogger(EredmelMessage.LoggingLevel printOut,
+			EredmelMessage.LoggingLevel printErr,
 			EredmelMessage.LoggingLevel exit) {
 		if (printOut.compareTo(printErr) > 0)
 			throw new IllegalArgumentException(String.format(
@@ -21,7 +46,7 @@ public class ConsoleLogger extends EredmelLogger {
 		this.exit = exit;
 	}
 	@Override
-	public synchronized void logUnsafe(EredmelMessage message) {
+	public synchronized void log(EredmelMessage message) {
 		if (message.level.compareTo(printOut) < 0) return;
 		StringBuffer result = new StringBuffer();
 		result.append(String.format("%s\n\tAt Path: %s\n\tAt Line: %s\n",

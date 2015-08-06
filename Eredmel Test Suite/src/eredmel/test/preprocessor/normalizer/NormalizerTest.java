@@ -69,7 +69,7 @@ public class NormalizerTest {
 			for (int i = 0; i < normExpected.nLines(); i++) {
 				assertEquals(format("Line %s:", i),
 						normExpected.lineAt(i).line, normActual.lineAt(i)
-								.display());
+								.displayWithTabs());
 			}
 		} catch (IOException | URISyntaxException e) {
 			throw new AssertionError(e);
