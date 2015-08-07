@@ -7,7 +7,7 @@ import java.nio.file.Path;
  * 
  * @author Kavi Gupta
  */
-public abstract class Line<T extends Line<T>> implements CharSequence {
+public abstract class Line<SELF extends Line<SELF>> implements CharSequence {
 	/**
 	 * The path of the original document
 	 */
@@ -33,5 +33,5 @@ public abstract class Line<T extends Line<T>> implements CharSequence {
 	 */
 	public abstract Path path();
 	@Override
-	public abstract T subSequence(int start, int end);
+	public abstract SELF subSequence(int start, int end);
 }
