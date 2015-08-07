@@ -11,15 +11,7 @@ import eredmel.logger.EredmelMessage;
  * 
  * @author Kavi Gupta
  */
-public class MeasuredLine implements Line {
-	/**
-	 * The path of the original document
-	 */
-	final Path path;
-	/**
-	 * The line number in the original document
-	 */
-	final int lineNumber;
+public class MeasuredLine extends Line<MeasuredLine> {
 	/**
 	 * The line, excluding the tabs and spaces
 	 */
@@ -37,8 +29,7 @@ public class MeasuredLine implements Line {
 	 */
 	MeasuredLine(Path path, int lineNumber, String restOfLine, int spaces,
 			int tabs) {
-		this.path = path;
-		this.lineNumber = lineNumber;
+		super(path, lineNumber);
 		this.restOfLine = restOfLine;
 		this.spaces = spaces;
 		this.tabs = tabs;
@@ -68,5 +59,38 @@ public class MeasuredLine implements Line {
 	@Override
 	public Path path() {
 		return path;
+	}
+	@Override
+	public char charAt(int index) {
+		if (index < tabs) return '\t';
+		index -= tabs;
+		if (index < spaces) return ' ';
+		return restOfLine.charAt(index - spaces);
+	}
+	@Override
+	public int length() {
+		return tabs + spaces + restOfLine.length();
+	}
+	@Override
+	public MeasuredLine subSequence(int start, int end) {
+		if (start < tabs) {
+			if (end < tabs)
+				return new MeasuredLine(path, lineNumber, "", end - start,
+						0);
+			if (end < tabs + spaces)
+				return new MeasuredLine(path, lineNumber, "", end - tabs,
+						tabs - start);
+			return new MeasuredLine(path, lineNumber, restOfLine.substring(
+					0, end - tabs - spaces), spaces, tabs - start);
+		}
+		if (start < spaces) {
+			if (end < spaces)
+				return new MeasuredLine(path, lineNumber, "", end - start,
+						0);
+			return new MeasuredLine(path, lineNumber, restOfLine.substring(
+					0, end - tabs - spaces), 0, spaces);
+		}
+		return new MeasuredLine(path, lineNumber, restOfLine.substring(start
+				- tabs - spaces, end - tabs - spaces), 0, 0);
 	}
 }

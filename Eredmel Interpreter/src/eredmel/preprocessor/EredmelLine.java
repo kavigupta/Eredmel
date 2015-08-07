@@ -10,15 +10,7 @@ import java.util.Arrays;
  * 
  * @author Kavi Gupta
  */
-public class EredmelLine implements Line {
-	/**
-	 * The path of the original document
-	 */
-	final Path path;
-	/**
-	 * The line number in the original document
-	 */
-	final int lineNumber;
+public class EredmelLine extends Line<EredmelLine> {
 	/**
 	 * The line, excluding the tabs and spaces
 	 */
@@ -28,8 +20,7 @@ public class EredmelLine implements Line {
 	 */
 	final int tabs;
 	EredmelLine(Path path, int lineNumber, String restOfLine, int tabs) {
-		this.path = path;
-		this.lineNumber = lineNumber;
+		super(path, lineNumber);
 		this.line = restOfLine;
 		this.tabs = tabs;
 	}
@@ -67,5 +58,24 @@ public class EredmelLine implements Line {
 	@Override
 	public String toString() {
 		return canonicalRepresentation();
+	}
+	@Override
+	public char charAt(int index) {
+		return index < tabs ? '\t' : line.charAt(index - tabs);
+	}
+	@Override
+	public int length() {
+		return tabs + line.length();
+	}
+	@Override
+	public EredmelLine subSequence(int start, int end) {
+		if (start < tabs) {
+			if (end < tabs)
+				return new EredmelLine(path, lineNumber, "", end - start);
+			return new EredmelLine(path, lineNumber, line.substring(0, end
+					- tabs), tabs - start);
+		}
+		return new EredmelLine(path, lineNumber, line.substring(end - tabs,
+				start - tabs), 0);
 	}
 }

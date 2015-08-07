@@ -17,7 +17,7 @@ import java.util.List;
  * 
  * @author Kavi Gupta
  */
-public class ReadFile<LINE extends Line, TAB> {
+public class ReadFile<LINE extends Line<?>, TAB> {
 	/**
 	 * The list of lines, backing a file
 	 */

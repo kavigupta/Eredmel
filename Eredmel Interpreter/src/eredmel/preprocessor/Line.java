@@ -7,17 +7,31 @@ import java.nio.file.Path;
  * 
  * @author Kavi Gupta
  */
-public interface Line {
+public abstract class Line<T extends Line<T>> implements CharSequence {
+	/**
+	 * The path of the original document
+	 */
+	final Path path;
+	/**
+	 * The line number in the original document
+	 */
+	final int lineNumber;
+	protected Line(Path path, int lineNumber) {
+		this.path = path;
+		this.lineNumber = lineNumber;
+	}
 	/**
 	 * A representation of the original line in an equivalent form
 	 */
-	public String canonicalRepresentation();
+	public abstract String canonicalRepresentation();
 	/**
 	 * The line number in the original file
 	 */
-	public int lineNumber();
+	public abstract int lineNumber();
 	/**
 	 * The path of the original file
 	 */
-	public Path path();
+	public abstract Path path();
+	@Override
+	public abstract T subSequence(int start, int end);
 }

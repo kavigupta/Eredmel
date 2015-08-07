@@ -7,15 +7,7 @@ import java.nio.file.Path;
  * 
  * @author Kavi Gupta
  */
-public class NumberedLine implements Line {
-	/**
-	 * The path of the original document
-	 */
-	final Path path;
-	/**
-	 * The line number in the original document
-	 */
-	final int lineNumber;
+public class NumberedLine extends Line<NumberedLine> {
 	/**
 	 * The text of the line
 	 */
@@ -24,8 +16,7 @@ public class NumberedLine implements Line {
 	 * Copies parameters into fields
 	 */
 	NumberedLine(Path path, int lineNumber, String line) {
-		this.path = path;
-		this.lineNumber = lineNumber;
+		super(path, lineNumber);
 		this.line = line;
 	}
 	/**
@@ -57,5 +48,17 @@ public class NumberedLine implements Line {
 	@Override
 	public Path path() {
 		return path;
+	}
+	@Override
+	public char charAt(int index) {
+		return line.charAt(index);
+	}
+	@Override
+	public int length() {
+		return line.length();
+	}
+	@Override
+	public NumberedLine subSequence(int start, int end) {
+		return new NumberedLine(path, lineNumber, line.substring(start, end));
 	}
 }
