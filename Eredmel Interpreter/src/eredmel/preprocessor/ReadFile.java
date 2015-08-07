@@ -66,4 +66,9 @@ public class ReadFile<LINE extends Line, TAB> {
 	public int nLines() {
 		return lines.size();
 	}
+	@Override
+	public String toString() {
+		return "ReadFile [lines=" + lines + ", path=" + path + ", tabwidth="
+				+ tabwidth + "]";
+	}
 }

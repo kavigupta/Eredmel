@@ -25,7 +25,7 @@ public abstract class EredmelLogger {
 	 * @param logger
 	 *        the logger to set this to
 	 */
-	public static void setLogger(EredmelLogger logger) {
+	public static void set(EredmelLogger logger) {
 		EredmelLogger._INSTANCE = logger;
 	}
 	/**

@@ -64,4 +64,8 @@ public class EredmelLine implements Line {
 	public Path path() {
 		return path;
 	}
+	@Override
+	public String toString() {
+		return canonicalRepresentation();
+	}
 }

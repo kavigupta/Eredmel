@@ -38,6 +38,19 @@ public final class EredmelPreprocessor {
 	private static final Pattern INCLUDE = Pattern
 			.compile("^\\s*##\\s*include\\s*\"(?<path>.+)\"\\s*$");
 	/**
+	 * Matches the first line of a replacement statement, which has the form
+	 * {@code ##replace enregex}, with any number of spaces
+	 * permissible between segments
+	 */
+	private static final Pattern REPLACE_ENREGEX = Pattern
+			.compile("^\\s*##\\s*replace(?<enregex>.+)$");
+	/**
+	 * Matches the second line of a replacement statement, which has the form
+	 * {@code \treplacement}
+	 */
+	private static final Pattern REPLACE_REPLACEMENT = Pattern
+			.compile("^\t.+$");
+	/**
 	 * Reads a file into memory, and assign numbers to lines
 	 * 
 	 * @param path
@@ -176,14 +189,19 @@ public final class EredmelPreprocessor {
 			List<Path> linkedLibs,
 			Set<ReadFile<EredmelLine, Integer>> loadedFiles,
 			List<Path> inclusionChain) {
+		if (!Files.exists(toRead))
+			EredmelMessage.fileNotFound(toRead.toString(), toRead, 0).log();
 		for (ReadFile<EredmelLine, Integer> linkedFile : loadedFiles)
 			if (linkedFile.path.equals(toRead)) return linkedFile;
-		int index = inclusionChain.indexOf(toRead);
+		int index = inclusionChain.stream()
+				.map(x -> x.normalize().toString())
+				.collect(Collectors.toList())
+				.indexOf(toRead.normalize().toString());
 		if (index >= 0) {
 			List<Path> circle = inclusionChain.subList(index,
 					inclusionChain.size());
 			circle.add(toRead);
-			EredmelMessage.circularInclusionLink(circle, toRead, 0);
+			EredmelMessage.circularInclusionLink(circle, toRead, 0).log();
 		}
 		inclusionChain = new ArrayList<>(inclusionChain);
 		inclusionChain.add(toRead);
@@ -192,30 +210,31 @@ public final class EredmelPreprocessor {
 			normalizedFile = normalize(readFile(toRead));
 		} catch (IOException e) {
 			EredmelMessage.errorLoadingFile(e, toRead).log();
-			// should be unreachable since this is a fatal error. Simply
-			// rethrow the error
-			throw new RuntimeException(e);
+			// if this point in the code is released, return an empty file.
+			return new ReadFile<>(new ArrayList<>(), toRead, 4);
 		}
 		List<EredmelLine> withInclusions = new ArrayList<>(
 				normalizedFile.nLines());
 		for (int i = 0; i < normalizedFile.nLines(); i++) {
-			Matcher mat = INCLUDE.matcher(normalizedFile.lineAt(i).line);
-			if (!mat.find()) {
+			Matcher inclusion = INCLUDE
+					.matcher(normalizedFile.lineAt(i).line);
+			if (!inclusion.find()) {
 				withInclusions.add(normalizedFile.lineAt(i));
 				continue;
 			}
 			Optional<Path> optPath = IOUtils.resolve(toRead, linkedLibs,
-					mat.group("path"));
+					inclusion.group("path"));
 			if (!optPath.isPresent()) {
-				EredmelMessage.inclusionNotFound(mat.group("path"),
+				EredmelMessage.fileNotFound(inclusion.group("path"),
 						normalizedFile.path, i).log();
+				// just skip if this error is being ignored
 				continue;
 			}
 			withInclusions.addAll(loadFile(optPath.get(), linkedLibs,
 					loadedFiles, inclusionChain).lines);
 		}
-		ReadFile<EredmelLine, Integer> file = new ReadFile<EredmelLine, Integer>(
-				withInclusions, toRead, normalizedFile.tabwidth);
+		ReadFile<EredmelLine, Integer> file = new ReadFile<>(withInclusions,
+				toRead, normalizedFile.tabwidth);
 		loadedFiles.add(file);
 		return file;
 	}
@@ -256,5 +275,10 @@ public final class EredmelPreprocessor {
 		}
 		return new ReadFile<>(original.lines.subList(i, original.nLines()),
 				original.path, Optional.empty());
+	}
+	public static ReadFile<EredmelLine, Integer> applyReplaces(
+			ReadFile<EredmelLine, Integer> file) {
+		// TODO
+		return file;
 	}
 }

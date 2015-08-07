@@ -45,8 +45,7 @@ public final class EredmelMessage {
 		NONE
 	}
 	/**
-	 * A message representing an unresolved inclusion, or an included file that
-	 * does not exist
+	 * A message representing a file that cannot be found
 	 * 
 	 * @param path
 	 *        the path that could not be resolved
@@ -57,11 +56,10 @@ public final class EredmelMessage {
 	 * @return
 	 *         an high-level warning message
 	 */
-	public static EredmelMessage inclusionNotFound(String path, Path file,
-			int i) {
+	public static EredmelMessage fileNotFound(String path, Path file, int i) {
 		return new EredmelMessage(EredmelMessage.LoggingLevel.HIGH,
-				String.format("Unresolved Inclusion: File %s Not Found",
-						path), file, i, Optional.empty());
+				String.format("File \"%s\" Not Found", path), file, i,
+				Optional.empty());
 	}
 	/**
 	 * An error occurred in loading an existing file
@@ -89,8 +87,10 @@ public final class EredmelMessage {
 	 * @return a mid-level warning
 	 */
 	public static EredmelMessage guessAtTabwidth(int tabwidth, Path file) {
-		return new EredmelMessage(EredmelMessage.LoggingLevel.MED,
-				String.format(""), file, 0, Optional.empty());
+		return new EredmelMessage(
+				EredmelMessage.LoggingLevel.MED,
+				String.format("The tabwidth of this file was guessed at as the GCF of the line beginnings; this is not encouraged"),
+				file, 0, Optional.empty());
 	}
 	/**
 	 * A link loop was found, where a file must eventually be included in
@@ -110,7 +110,8 @@ public final class EredmelMessage {
 		for (Path el : chain)
 			buff.append('\t').append(el).append('\n');
 		return new EredmelMessage(EredmelMessage.LoggingLevel.HIGH,
-				buff.toString(), toRead, i, Optional.empty());
+				buff.substring(0, buff.length() - 1), toRead, i,
+				Optional.empty());
 	}
 	/**
 	 * The tabwidth had to be rounded
@@ -184,10 +185,12 @@ public final class EredmelMessage {
 		try {
 			logger.log(this);
 		} catch (Throwable e) {
-			if (!file.equals(Paths.get("/")))
+			if (e instanceof ControlFlow) throw (ControlFlow) e;
+			if (!file.equals(Paths.get("/"))) {
 				new EredmelMessage(EredmelMessage.LoggingLevel.FATAL,
 						"Error in logging an error", Paths.get("/"), 0,
-						Optional.empty()).log(logger);
+						Optional.of(e)).log(logger);
+			}
 		}
 	}
 	/**

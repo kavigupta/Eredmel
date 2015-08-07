@@ -1,0 +1,12 @@
+Basic Inclusion
+
+There should be no problem with
+	these flatfile inclusion
+		which are fairly simple
+	There are no nested inclusions
+		No normalization necessary
+
+BUT WAIT!!!
+
+
+##include "selfref.edmh"

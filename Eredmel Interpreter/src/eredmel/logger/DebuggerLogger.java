@@ -2,6 +2,8 @@ package eredmel.logger;
 
 import java.util.Stack;
 
+import eredmel.logger.EredmelMessage.LoggingLevel;
+
 /**
  * A logger that stores all the error messages it receives on a stack and pops
  * them off as demanded
@@ -10,9 +12,17 @@ import java.util.Stack;
  */
 public class DebuggerLogger extends EredmelLogger {
 	private Stack<EredmelMessage> messages;
+	/**
+	 * Creates a new Debugger Logger with an empty stack
+	 */
+	public DebuggerLogger() {
+		messages = new Stack<>();
+	}
 	@Override
 	public synchronized void log(EredmelMessage message) {
 		messages.push(message);
+		if (message.level.compareTo(LoggingLevel.HIGH) >= 0)
+			throw new ControlFlow();
 	}
 	/**
 	 * Whether this logger has messages or not
