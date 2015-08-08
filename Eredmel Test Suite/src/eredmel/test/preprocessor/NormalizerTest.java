@@ -1,4 +1,4 @@
-package eredmel.test.preprocessor.normalizer;
+package eredmel.test.preprocessor;
 
 import static java.lang.String.format;
 import static org.junit.Assert.assertEquals;
