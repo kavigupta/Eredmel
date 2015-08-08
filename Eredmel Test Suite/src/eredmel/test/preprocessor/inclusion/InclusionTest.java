@@ -92,11 +92,11 @@ public class InclusionTest {
 		}
 		ReadFile<EredmelLine, Integer> normActual = EredmelPreprocessor
 				.loadFile(Paths.get(relative(path)), new ArrayList<>());
-		for (int i = 0; i < normExpected.nLines(); i++) {
+		for (int i = 0; i < normExpected.numLines(); i++) {
 			assertEquals(format("Line %s:", i), normExpected.lineAt(i).line,
 					normActual.lineAt(i).displayWithTabs());
 		}
-		assertEquals("File Size", normExpected.nLines(), normActual.nLines());
+		assertEquals("File Size", normExpected.numLines(), normActual.numLines());
 	}
 	private static String relative(String path) {
 		return "eg/inclusion/" + path;

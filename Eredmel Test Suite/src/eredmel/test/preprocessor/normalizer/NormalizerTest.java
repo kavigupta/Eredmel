@@ -62,11 +62,11 @@ public class NormalizerTest {
 					: paths[1]);
 			ReadFile<EredmelLine, Integer> normActual = EredmelPreprocessor
 					.normalize(original);
-			assertEquals("File Size", normExpected.nLines(),
-					normActual.nLines());
+			assertEquals("File Size", normExpected.numLines(),
+					normActual.numLines());
 			assertEquals("Tabwidth", expectedTabwidth,
 					normActual.tabwidth.intValue());
-			for (int i = 0; i < normExpected.nLines(); i++) {
+			for (int i = 0; i < normExpected.numLines(); i++) {
 				assertEquals(format("Line %s:", i),
 						normExpected.lineAt(i).line, normActual.lineAt(i)
 								.displayWithTabs());

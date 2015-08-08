@@ -5,6 +5,7 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
+import java.util.stream.Collectors;
 
 import eredmel.utils.collections.Pair;
 
@@ -80,8 +81,56 @@ public class ReadFile<LINE extends Line<?>, TAB> implements CharSequence {
 	 * 
 	 * @return the number of lines
 	 */
-	public int nLines() {
+	public int numLines() {
 		return lines.size();
+	}
+	/**
+	 * Concatenates the data from the other file to that of this one,
+	 * preserving this file's context and tabwidth metadata.
+	 * 
+	 * Note that this does not modify either file, this can be compared to the
+	 * function {@code (String a, String b) -> a + b}
+	 * 
+	 * @param other
+	 *        the other file to attach to this one
+	 * @return the concatenation of this file and other
+	 */
+	public ReadFile<LINE, TAB> concat(ReadFile<LINE, TAB> other) {
+		ArrayList<LINE> lines = new ArrayList<>(this.lines);
+		lines.addAll(other.lines);
+		return new ReadFile<>(lines, this.path, this.tabwidth);
+	}
+	/**
+	 * Replaces the given file with a string representation and returns a file
+	 * with line numbers scaled linearly
+	 * 
+	 * @param replThis
+	 *        the file to replace
+	 * @param replWith
+	 *        the string to replace it with
+	 * @return the file with lines replaced and numbers scaled linearly
+	 */
+	public static <TAB> ReadFile<EredmelLine, TAB> replace(
+			ReadFile<EredmelLine, TAB> replThis, String replWith) {
+		ArrayList<String> replWithLines = new ArrayList<>();
+		int lastTerm = 0;
+		for (int i = 0; i < replWith.length(); i++) {
+			if (replWith.charAt(i) == '\n' || i == replWith.length() - 1) {
+				replWithLines.add(replWith.substring(lastTerm, i + 1));
+				lastTerm = i + 1;
+			}
+		}
+		double scale = (double) replWithLines.size() / replThis.numLines();
+		ArrayList<EredmelLine> replacement = new ArrayList<>();
+		for (int i = 0; i < replWithLines.size(); i++) {
+			int tabs = 0;
+			for (char c : replWithLines.get(i).toCharArray())
+				if (c == '\t') tabs++;
+			replacement.add(new EredmelLine(replThis.path, (int) Math
+					.round(i * scale), replWithLines.get(i)
+					.substring(tabs), tabs));
+		}
+		return new ReadFile<>(replacement, replThis.path, replThis.tabwidth);
 	}
 	/**
 	 * Gets the line and column numbers associated with the given index
@@ -150,7 +199,9 @@ public class ReadFile<LINE extends Line<?>, TAB> implements CharSequence {
 	}
 	@Override
 	public String toString() {
-		return "ReadFile [lines=" + lines + ", path=" + path + ", tabwidth="
-				+ tabwidth + "]";
+		return lines.stream().map(Line::toString)
+				.collect(Collectors.reducing("", (x, y) -> x + y));
+		// LOWPRI performance improvement possibility here; replace +
+		// concatenation with a StringBuilder
 	}
 }
