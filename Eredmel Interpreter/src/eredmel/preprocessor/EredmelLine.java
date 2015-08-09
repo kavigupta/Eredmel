@@ -75,7 +75,7 @@ public class EredmelLine extends Line<EredmelLine> {
 			return new EredmelLine(path, lineNumber, line.substring(0, end
 					- tabs), tabs - start);
 		}
-		return new EredmelLine(path, lineNumber, line.substring(end - tabs,
-				start - tabs), 0);
+		return new EredmelLine(path, lineNumber, line.substring(start - tabs,
+				end - tabs), 0);
 	}
 }

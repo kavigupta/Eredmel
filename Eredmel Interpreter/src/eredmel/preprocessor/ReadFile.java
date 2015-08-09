@@ -5,7 +5,6 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
-import java.util.stream.Collectors;
 
 import eredmel.utils.collections.Pair;
 
@@ -57,6 +56,8 @@ public class ReadFile<LINE extends Line<?>, TAB> implements CharSequence {
 		for (LINE line : lines) {
 			offsets.add(off);
 			off += line.length();
+			if (line.length() == 0)
+				throw new IllegalArgumentException(line.toString());
 		}
 		offsets.add(off);
 		this.offsets = offsets;
@@ -116,7 +117,8 @@ public class ReadFile<LINE extends Line<?>, TAB> implements CharSequence {
 		int lastTerm = 0;
 		for (int i = 0; i < replWith.length(); i++) {
 			if (replWith.charAt(i) == '\n' || i == replWith.length() - 1) {
-				replWithLines.add(replWith.substring(lastTerm, i + 1));
+				if (lastTerm != i + 1)
+					replWithLines.add(replWith.substring(lastTerm, i + 1));
 				lastTerm = i + 1;
 			}
 		}
@@ -126,9 +128,13 @@ public class ReadFile<LINE extends Line<?>, TAB> implements CharSequence {
 			int tabs = 0;
 			for (char c : replWithLines.get(i).toCharArray())
 				if (c == '\t') tabs++;
-			replacement.add(new EredmelLine(replThis.path, (int) Math
-					.round(i * scale), replWithLines.get(i)
-					.substring(tabs), tabs));
+			EredmelLine el = new EredmelLine(replThis.path,
+					(int) Math.round(i * scale), replWithLines.get(i)
+							.substring(tabs), tabs);
+			if (el.length() == 0)
+				throw new IllegalArgumentException(replWithLines.get(i));
+			replacement.add(el);
+			// TODO fix
 		}
 		return new ReadFile<>(replacement, replThis.path, replThis.tabwidth);
 	}
@@ -188,19 +194,27 @@ public class ReadFile<LINE extends Line<?>, TAB> implements CharSequence {
 	@Override
 	public ReadFile<LINE, TAB> subSequence(int start, int end) {
 		Pair<Integer, Integer> stLC = lineCol(start), endLC = lineCol(end);
-		if (stLC.key == endLC.key) { return new ReadFile<>(
-				Arrays.asList(subLine(stLC.key, stLC.value, endLC.value)),
-				path, tabwidth); }
+		if (stLC.key.intValue() == endLC.key.intValue()) {
+			if (stLC.value.intValue() == endLC.value.intValue())
+				return new ReadFile<>(new ArrayList<>(), path, tabwidth);
+			return new ReadFile<>(Arrays.asList(subLine(stLC.key,
+					stLC.value, endLC.value)), path, tabwidth);
+		}
 		List<LINE> lines = new ArrayList<>();
 		lines.add(subLine(stLC.key, stLC.value));
-		lines.addAll(lines.subList(stLC.key + 1, endLC.key));
-		lines.add(subLine(stLC.key, 0, endLC.value));
+		lines.addAll(this.lines.subList(stLC.key + 1, endLC.key));
+		if (0 != endLC.value) lines.add(subLine(endLC.key, 0, endLC.value));
 		return new ReadFile<>(lines, path, tabwidth);
 	}
 	@Override
 	public String toString() {
-		return lines.stream().map(Line::toString)
-				.collect(Collectors.reducing("", (x, y) -> x + y));
+		char[] c = new char[length()];
+		for (int i = 0; i < length(); i++) {
+			c[i] = charAt(i);
+		}
+		return new String(c);
+		// return lines.stream().map(Line::toString)
+		// .collect(Collectors.reducing("", (x, y) -> x + y));
 		// LOWPRI performance improvement possibility here; replace +
 		// concatenation with a StringBuilder
 	}

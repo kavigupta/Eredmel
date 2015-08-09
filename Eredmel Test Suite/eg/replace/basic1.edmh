@@ -1,0 +1,11 @@
+##replace ~^'ifdef \s* (.+)
+	if def($1)
+
+ifdef x
+	y = 2
+
+ifdef .+
+	undef .+
+	
+	ifdef y
+		x = 2

@@ -44,7 +44,7 @@ public final class EredmelPreprocessor {
 	 * permissible between segments
 	 */
 	private static final Pattern REPLACE = Pattern
-			.compile("[^\\S\n]*##\\s*replace(?<enregex>.+)^\t(?<repl>.+)$");
+			.compile("##\\s*replace(?<enregex>.+)\n\t(?<repl>.+)\n");
 	/**
 	 * Reads a file into memory, and assign numbers to lines
 	 * 
@@ -295,6 +295,7 @@ public final class EredmelPreprocessor {
 			Pattern enregex = Pattern.compile(findRepl.group("enregex"),
 					Pattern.ENHANCED_REGEX | Pattern.COMMENTS,
 					EnregexType.EREDMEL_STANDARD);
+			System.out.println("Processing " + findRepl.group("enregex"));
 			String replace = findRepl.group("repl").replace("\\t", "\t")
 					.replace("\\n", "\n");
 			// pop \##replace off
@@ -312,9 +313,10 @@ public final class EredmelPreprocessor {
 				ReadFile<EredmelLine, Integer> afterMatch = preReplace
 						.subSequence(replacer.end(), preReplace.length());
 				// applies the replacements
-				preReplace = beforeMatch.concat(
-						ReadFile.replace(match, replacement.toString()))
-						.concat(afterMatch);
+				processed.concat(beforeMatch);
+				preReplace = ReadFile
+						.replace(match, replacement.toString()).concat(
+								afterMatch);
 			}
 		}
 		processed = processed.concat(preReplace);

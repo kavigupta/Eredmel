@@ -1,0 +1,12 @@
+##replace @integer
+	~^'(?:\+|-)?\d+
+
+##replace @decimal
+	@integer(?:\.\d*)?(?:e@integer)?
+
+##replace (@decimal)\s*\+\s*(@decimal)
+	___add($1, $2)
+
+@integer	@decimal
+
+1.23e34 + -3.45e-34

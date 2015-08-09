@@ -1,0 +1,9 @@
+
+if def(x)
+	y = 2
+
+if def(.+)
+	undef .+
+	
+	if def(y)
+		x = 2
