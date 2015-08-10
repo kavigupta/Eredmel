@@ -44,7 +44,7 @@ public final class EredmelPreprocessor {
 	 * permissible between segments
 	 */
 	private static final Pattern REPLACE = Pattern
-			.compile("##\\s*replace(?<enregex>.+)\n\t(?<repl>.+)\n");
+			.compile("##\\s*replace(?<lit>lit)?(?<enregex>.+)\n\t(?<repl>.+)\n");
 	/**
 	 * Reads a file into memory, and assign numbers to lines
 	 * 
@@ -273,14 +273,16 @@ public final class EredmelPreprocessor {
 				original.path, Optional.empty());
 	}
 	/**
-	 * Applies the {@code ##replace} statements in this file one-by-one to the
-	 * text below them, recursively.
+	 * Applies the {@code ##replace} and {@code ##replacelit} statements in
+	 * this file one-by-one to the text below them, recursively.
 	 * 
 	 * TODO: Future versions may implement an END to the algorithmic scope
 	 * 
 	 * @param preReplace
-	 *        the file before {@code ##replace} statements have been applied
-	 * @replace the file after {@code ##replace} statements have been applied
+	 *        the file before {@code ##replace[lit]} statements have been
+	 *        applied
+	 * @replace the file after {@code ##replace[lit]} statements have been
+	 *          applied
 	 */
 	public static ReadFile<EredmelLine, Integer> applyReplaces(
 			ReadFile<EredmelLine, Integer> preReplace) {
@@ -289,35 +291,74 @@ public final class EredmelPreprocessor {
 		// the reason for this structure is the regexes are self-modifying
 		while (true) {
 			Matcher findRepl = REPLACE.matcher(preReplace);
-			if (!findRepl.find()) break; // no \##replace
-			processed = processed.concat(preReplace.subSequence(0,
-					findRepl.start()));
+			if (!findRepl.find()) {
+				System.out.println("FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF");
+				System.out.println("No match found for REPLACE in:");
+				System.out.println(preReplace);
+				break;
+			} // no \##replace
 			Pattern enregex = Pattern.compile(findRepl.group("enregex"),
 					Pattern.ENHANCED_REGEX | Pattern.COMMENTS,
 					EnregexType.EREDMEL_STANDARD);
 			System.out.println("Processing " + findRepl.group("enregex"));
-			String replace = findRepl.group("repl").replace("\\t", "\t")
-					.replace("\\n", "\n");
+			boolean lit = findRepl.group("lit") != null
+					&& findRepl.group("lit").equals("lit");
+			String replace = findRepl.group("repl");
+			if (!lit)
+				replace = replace.replace("\\t", "\t").replace("\\n", "\n");
 			// pop \##replace off
 			preReplace = preReplace.subSequence(findRepl.end(),
 					preReplace.length());
+			System.out.println(preReplace);
 			while (true) {
 				Matcher replacer = enregex.matcher(preReplace);
 				if (!replacer.find()) break;
-				StringBuffer replacement = new StringBuffer();
-				replacer.appendReplacement(replacement, replace);
+				String replacement;
+				if (lit) {
+					replacement = replace;
+				} else {
+					StringBuffer sbRepl = new StringBuffer();
+					replacer.appendReplacement(sbRepl, replace, false,
+							true);
+					replacement = sbRepl.toString();
+					// System.out.println("111111111111111111");
+					// System.out.println(replace);
+					// System.out.println("222222222222222222");
+					// System.out.println(replacement);
+					// System.out.println("333333333333333333");
+				}
 				ReadFile<EredmelLine, Integer> beforeMatch = preReplace
 						.subSequence(0, replacer.start());
 				ReadFile<EredmelLine, Integer> match = preReplace
 						.subSequence(replacer.start(), replacer.end());
 				ReadFile<EredmelLine, Integer> afterMatch = preReplace
 						.subSequence(replacer.end(), preReplace.length());
+				// System.out.println("-------------------");
+				// System.out.print(beforeMatch);
+				// System.out.print(match);
+				// System.out.print(afterMatch);
+				// System.out.println("~~~~~~~~~~~~~~~~~~~");
+				// System.out.print(beforeMatch);
+				// System.out.print(replacement);
+				// System.out.print(afterMatch);
 				// applies the replacements
-				processed.concat(beforeMatch);
-				preReplace = ReadFile
-						.replace(match, replacement.toString()).concat(
-								afterMatch);
+				// System.out.println("```````````````````");
+				// System.out.println(preReplace);
+				// System.out.println("###################");
+				processed = processed.concat(beforeMatch);
+				preReplace = ReadFile.replace(match, replacement).concat(
+						afterMatch);
+				// System.out.println(processed);
+				// System.out.println("@@@@@@@@@@@@@@@@@@@");
+				// System.out.println(replacement);
+				// System.out.println("$$$$$$$$$$$$$$$$$$$");
+				// System.out.println(afterMatch);
+				// System.out.println("==================>");
+				// System.out.println(preReplace);
 			}
+			preReplace = processed.concat(preReplace);
+			processed = new ReadFile<>(new ArrayList<>(), processed.path,
+					processed.tabwidth);
 		}
 		processed = processed.concat(preReplace);
 		return processed;

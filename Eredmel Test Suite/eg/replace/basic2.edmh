@@ -1,8 +1,8 @@
-##replace @integer
-	~^'(?:\+|-)?\d+
+##replacelit @integer
+	(?:\+|-)?\d+
 
-##replace @decimal
-	@integer(?:\.\d*)?(?:e@integer)?
+##replacelit @decimal
+	@integer(?:\.\d*)?(?:e@integer)?~^'
 
 ##replace (@decimal)\s*\+\s*(@decimal)
 	___add($1, $2)

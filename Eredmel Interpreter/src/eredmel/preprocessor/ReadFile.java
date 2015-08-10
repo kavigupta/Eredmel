@@ -203,7 +203,8 @@ public class ReadFile<LINE extends Line<?>, TAB> implements CharSequence {
 		List<LINE> lines = new ArrayList<>();
 		lines.add(subLine(stLC.key, stLC.value));
 		lines.addAll(this.lines.subList(stLC.key + 1, endLC.key));
-		if (0 != endLC.value) lines.add(subLine(endLC.key, 0, endLC.value));
+		if (!endLC.value.equals(0))
+			lines.add(subLine(endLC.key, 0, endLC.value));
 		return new ReadFile<>(lines, path, tabwidth);
 	}
 	@Override
