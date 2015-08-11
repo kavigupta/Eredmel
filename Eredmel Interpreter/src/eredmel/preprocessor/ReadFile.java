@@ -1,6 +1,5 @@
 package eredmel.preprocessor;
 
-import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
@@ -32,10 +31,6 @@ public class ReadFile<LINE extends Line<?>, TAB> implements CharSequence {
 	 */
 	final List<Integer> offsets;
 	/**
-	 * The path that the original file is contained in
-	 */
-	public final Path path;
-	/**
 	 * The tabwidth of this file
 	 */
 	public final TAB tabwidth;
@@ -49,7 +44,7 @@ public class ReadFile<LINE extends Line<?>, TAB> implements CharSequence {
 	 * @param tabwidth
 	 *        The tabwidth of this file
 	 */
-	ReadFile(List<LINE> lines, Path path, TAB tabwidth) {
+	ReadFile(List<LINE> lines, TAB tabwidth) {
 		this.lines = lines;
 		List<Integer> offsets = new ArrayList<>();
 		int off = 0;
@@ -61,7 +56,6 @@ public class ReadFile<LINE extends Line<?>, TAB> implements CharSequence {
 		}
 		offsets.add(off);
 		this.offsets = offsets;
-		this.path = path;
 		this.tabwidth = tabwidth;
 	}
 	/**
@@ -86,6 +80,16 @@ public class ReadFile<LINE extends Line<?>, TAB> implements CharSequence {
 		return lines.size();
 	}
 	/**
+	 * Gets the number of lines in the original code that this file spanned
+	 * 
+	 * @return the number of lines
+	 */
+	public int lineSpan() {
+		if (lines.size() == 0) return 0;
+		return 1 + lines.get(lines.size() - 1).lineNumber
+				- lines.get(0).lineNumber;
+	}
+	/**
 	 * Concatenates the data from the other file to that of this one,
 	 * preserving this file's context and tabwidth metadata.
 	 * 
@@ -99,7 +103,7 @@ public class ReadFile<LINE extends Line<?>, TAB> implements CharSequence {
 	public ReadFile<LINE, TAB> concat(ReadFile<LINE, TAB> other) {
 		ArrayList<LINE> lines = new ArrayList<>(this.lines);
 		lines.addAll(other.lines);
-		return new ReadFile<>(lines, this.path, this.tabwidth);
+		return new ReadFile<>(lines, this.tabwidth);
 	}
 	/**
 	 * Replaces the given file with a string representation and returns a file
@@ -111,8 +115,8 @@ public class ReadFile<LINE extends Line<?>, TAB> implements CharSequence {
 	 *        the string to replace it with
 	 * @return the file with lines replaced and numbers scaled linearly
 	 */
-	public static <TAB> ReadFile<EredmelLine, TAB> replace(
-			ReadFile<EredmelLine, TAB> replThis, String replWith) {
+	public static <TAB> ReadFile<EredmelLine, Integer> replace(
+			ReadFile<EredmelLine, Integer> replThis, String replWith) {
 		ArrayList<String> replWithLines = new ArrayList<>();
 		int lastTerm = 0;
 		for (int i = 0; i < replWith.length(); i++) {
@@ -122,21 +126,26 @@ public class ReadFile<LINE extends Line<?>, TAB> implements CharSequence {
 				lastTerm = i + 1;
 			}
 		}
-		double scale = (double) replWithLines.size() / replThis.numLines();
-		ArrayList<EredmelLine> replacement = new ArrayList<>();
-		for (int i = 0; i < replWithLines.size(); i++) {
-			int tabs = 0;
-			for (char c : replWithLines.get(i).toCharArray())
-				if (c == '\t') tabs++;
-			EredmelLine el = new EredmelLine(replThis.path,
-					(int) Math.round(i * scale), replWithLines.get(i)
-							.substring(tabs), tabs);
-			if (el.length() == 0)
-				throw new IllegalArgumentException(replWithLines.get(i));
-			replacement.add(el);
-			// TODO fix
+		if (replThis.lines.size() == 0)
+			throw new IllegalArgumentException(
+					"Cannot Replace an empty segment with other data");
+		ArrayList<EredmelLine> orReprLines = new ArrayList<>();
+		for (int i = 0; i < replThis.numLines(); i++) {
+			orReprLines.add(replThis.lineAt(i));
+			while (i < replThis.numLines()
+					&& replThis.lineAt(i).line.contains("\n"))
+				i++;
 		}
-		return new ReadFile<>(replacement, replThis.path, replThis.tabwidth);
+		double scale = (double) orReprLines.size() / replWithLines.size();
+		ArrayList<EredmelLine> replThisLines = new ArrayList<>();
+		for (int i = 0; i < replWithLines.size(); i++) {
+			EredmelLine origReprLine = orReprLines.get((int) (scale * i));
+			EredmelLine replWithLIne = new NumberedLine(origReprLine.path,
+					origReprLine.lineNumber, replWithLines.get(i))
+					.countWhitespace().applyTabwidth(replThis.tabwidth);
+			replThisLines.add(replWithLIne);
+		}
+		return new ReadFile<>(replThisLines, replThis.tabwidth);
 	}
 	/**
 	 * Gets the line and column numbers associated with the given index
@@ -196,16 +205,16 @@ public class ReadFile<LINE extends Line<?>, TAB> implements CharSequence {
 		Pair<Integer, Integer> stLC = lineCol(start), endLC = lineCol(end);
 		if (stLC.key.intValue() == endLC.key.intValue()) {
 			if (stLC.value.intValue() == endLC.value.intValue())
-				return new ReadFile<>(new ArrayList<>(), path, tabwidth);
+				return new ReadFile<>(new ArrayList<>(), tabwidth);
 			return new ReadFile<>(Arrays.asList(subLine(stLC.key,
-					stLC.value, endLC.value)), path, tabwidth);
+					stLC.value, endLC.value)), tabwidth);
 		}
 		List<LINE> lines = new ArrayList<>();
 		lines.add(subLine(stLC.key, stLC.value));
 		lines.addAll(this.lines.subList(stLC.key + 1, endLC.key));
 		if (!endLC.value.equals(0))
 			lines.add(subLine(endLC.key, 0, endLC.value));
-		return new ReadFile<>(lines, path, tabwidth);
+		return new ReadFile<>(lines, tabwidth);
 	}
 	@Override
 	public String toString() {

@@ -4,6 +4,7 @@ import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.*;
+import java.util.Map.Entry;
 import java.util.stream.Collectors;
 
 import eredmel.logger.EredmelMessage;
@@ -62,7 +63,7 @@ public final class EredmelPreprocessor {
 		for (int i = 0; i < lines.size(); i++) {
 			numbered.add(new NumberedLine(path, i, lines.get(i) + '\n'));
 		}
-		return new ReadFile<>(numbered, path, null);
+		return new ReadFile<>(numbered, null);
 	}
 	/**
 	 * Normalizes a given Eredmel file.
@@ -104,8 +105,8 @@ public final class EredmelPreprocessor {
 			} else {
 				// take a guess
 				tabwidth = gcf;
-				EredmelMessage.guessAtTabwidth(tabwidth, toNormalize.path)
-						.log();
+				EredmelMessage.guessAtTabwidth(tabwidth,
+						toNormalize.lineAt(0).path).log();
 			}
 		} else {
 			tabwidth = countedStart.tabwidth.get();
@@ -113,11 +114,9 @@ public final class EredmelPreprocessor {
 		List<EredmelLine> normalized = new ArrayList<>(
 				countedStart.numLines());
 		for (MeasuredLine line : countedStart.lines) {
-			int tabs = line.indentationLevel(tabwidth);
-			normalized.add(new EredmelLine(countedStart.path, tabs,
-					line.restOfLine, tabs));
+			normalized.add(line.applyTabwidth(tabwidth));
 		}
-		return new ReadFile<>(normalized, countedStart.path, tabwidth);
+		return new ReadFile<>(normalized, tabwidth);
 	}
 	/**
 	 * 
@@ -139,7 +138,7 @@ public final class EredmelPreprocessor {
 	 */
 	public static List<ReadFile<EredmelLine, Integer>> loadFiles(
 			List<Path> toRead, List<Path> linkedLibs) {
-		Set<ReadFile<EredmelLine, Integer>> allLoaded = new HashSet<>();
+		Map<Path, ReadFile<EredmelLine, Integer>> allLoaded = new HashMap<>();
 		List<ReadFile<EredmelLine, Integer>> requestedLoaded = new ArrayList<>();
 		for (Path individual : toRead) {
 			requestedLoaded.add(loadFile(individual, linkedLibs, allLoaded,
@@ -183,12 +182,14 @@ public final class EredmelPreprocessor {
 	 */
 	private static ReadFile<EredmelLine, Integer> loadFile(Path toRead,
 			List<Path> linkedLibs,
-			Set<ReadFile<EredmelLine, Integer>> loadedFiles,
+			Map<Path, ReadFile<EredmelLine, Integer>> loadedFiles,
 			List<Path> inclusionChain) {
 		if (!Files.exists(toRead))
 			EredmelMessage.fileNotFound(toRead.toString(), toRead, 0).log();
-		for (ReadFile<EredmelLine, Integer> linkedFile : loadedFiles)
-			if (linkedFile.path.equals(toRead)) return linkedFile;
+		for (Entry<Path, ReadFile<EredmelLine, Integer>> linkedFile : loadedFiles
+				.entrySet())
+			if (linkedFile.getKey().equals(toRead))
+				return linkedFile.getValue();
 		int index = inclusionChain.stream()
 				.map(x -> x.normalize().toString())
 				.collect(Collectors.toList())
@@ -207,7 +208,7 @@ public final class EredmelPreprocessor {
 		} catch (IOException e) {
 			EredmelMessage.errorLoadingFile(e, toRead).log();
 			// if this point in the code is released, return an empty file.
-			return new ReadFile<>(new ArrayList<>(), toRead, 4);
+			return new ReadFile<>(new ArrayList<>(), 4);
 		}
 		List<EredmelLine> withInclusions = new ArrayList<>(
 				normalizedFile.numLines());
@@ -222,7 +223,7 @@ public final class EredmelPreprocessor {
 					inclusion.group("path"));
 			if (!optPath.isPresent()) {
 				EredmelMessage.fileNotFound(inclusion.group("path"),
-						normalizedFile.path, i).log();
+						normalizedFile.lineAt(0).path, i).log();
 				// just skip if this error is being ignored
 				continue;
 			}
@@ -230,8 +231,8 @@ public final class EredmelPreprocessor {
 					loadedFiles, inclusionChain).lines);
 		}
 		ReadFile<EredmelLine, Integer> file = new ReadFile<>(withInclusions,
-				toRead, normalizedFile.tabwidth);
-		loadedFiles.add(file);
+				normalizedFile.tabwidth);
+		loadedFiles.put(toRead, file);
 		return file;
 	}
 	/**
@@ -241,7 +242,7 @@ public final class EredmelPreprocessor {
 			ReadFile<NumberedLine, T> norm) {
 		return new ReadFile<>(norm.lines.stream()
 				.map(NumberedLine::countWhitespace)
-				.collect(Collectors.toList()), norm.path, norm.tabwidth);
+				.collect(Collectors.toList()), norm.tabwidth);
 	}
 	/**
 	 * Gets the tabwidth and consumes a tabwidth statement
@@ -264,13 +265,12 @@ public final class EredmelPreprocessor {
 			if (mat.find()) {
 				i++;
 				return new ReadFile<>(original.lines.subList(i,
-						original.numLines()), original.path,
-						Optional.of(Integer.parseInt(mat
-								.group("tabwidth"))));
+						original.numLines()), Optional.of(Integer
+						.parseInt(mat.group("tabwidth"))));
 			}
 		}
 		return new ReadFile<>(original.lines.subList(i, original.numLines()),
-				original.path, Optional.empty());
+				Optional.empty());
 	}
 	/**
 	 * Applies the {@code ##replace} and {@code ##replacelit} statements in
@@ -287,7 +287,7 @@ public final class EredmelPreprocessor {
 	public static ReadFile<EredmelLine, Integer> applyReplaces(
 			ReadFile<EredmelLine, Integer> preReplace) {
 		ReadFile<EredmelLine, Integer> processed = new ReadFile<>(
-				new ArrayList<>(), preReplace.path, preReplace.tabwidth);
+				new ArrayList<>(), preReplace.tabwidth);
 		// the reason for this structure is the regexes are self-modifying
 		while (true) {
 			Matcher findRepl = REPLACE.matcher(preReplace);
@@ -357,8 +357,7 @@ public final class EredmelPreprocessor {
 				// System.out.println(preReplace);
 			}
 			preReplace = processed.concat(preReplace);
-			processed = new ReadFile<>(new ArrayList<>(), processed.path,
-					processed.tabwidth);
+			processed = new ReadFile<>(new ArrayList<>(), processed.tabwidth);
 		}
 		processed = processed.concat(preReplace);
 		return processed;

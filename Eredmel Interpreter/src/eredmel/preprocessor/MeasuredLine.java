@@ -34,6 +34,10 @@ public class MeasuredLine extends Line<MeasuredLine> {
 		this.spaces = spaces;
 		this.tabs = tabs;
 	}
+	public EredmelLine applyTabwidth(int tabwidth) {
+		return new EredmelLine(path, spaces, restOfLine,
+				indentationLevel(tabwidth));
+	}
 	/**
 	 * Gets the indentation level, given the given tabwidth. This divides the
 	 * number of spaces by the tabwidth and adds that to the number of tabs. If
