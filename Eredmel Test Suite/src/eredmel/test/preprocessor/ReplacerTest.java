@@ -15,9 +15,16 @@ import eredmel.preprocessor.ReadFile;
 
 public class ReplacerTest {
 	@Test
-	public void simpleNonOverlappingTests() {
-		testReplace("basic1");
-		testReplace("basic2");
+	public void simpleNonOverlappingTest() {
+		testReplace("basic");
+	}
+	@Test
+	public void embedTest() {
+		testReplace("embed");
+	}
+	@Test
+	public void recursiveTest() {
+		testReplace("recursive");
 	}
 	public static void testReplace(String path) {
 		ReadFile<NumberedLine, Void> replExpected;

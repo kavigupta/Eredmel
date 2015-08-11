@@ -1,0 +1,6 @@
+##replace replAwB\(~( (?<before>[^A]*) A (?<after>.*) ~)\)
+	replAwB(${before}B${after})
+##replace replAwB\(~( (?<data> [^A]+) ~)\)
+	${data}
+
+replAwB(TEST DATA IS GOOD. AAA)
