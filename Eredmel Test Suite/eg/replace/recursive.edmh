@@ -4,3 +4,4 @@
 	${data}
 
 replAwB(TEST DATA IS GOOD. AAA)
+(2 * replAwB(0xABCDEF + 0x89ABC) + (0xAAA) + 3)
