@@ -2,11 +2,14 @@
 	(?:\+|-)?\d+
 
 ##replacelit @decimal
-	@integer(?:\.\d*)?(?:e@integer)?~^'
+	@integer(?:\.\d*)?(?:e@integer)?
 
-##replace (@decimal)\s*\+\s*(@decimal)
+##replace (@decimal)\s*\+\s*(@decimal)~^'
 	___add($1, $2)
 
 @integer	@decimal
 
 1.23e34 + -3.45e-34
+'12345 + 67890'
+1+			2
+''1+2
