@@ -5,6 +5,7 @@ import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
 
+import eredmel.config.EredmelConfiguration;
 import eredmel.utils.collections.Pair;
 
 /**
@@ -21,7 +22,7 @@ import eredmel.utils.collections.Pair;
  * 
  * @author Kavi Gupta
  */
-public class ReadFile<LINE extends Line<?>, TAB> implements CharSequence {
+public class ReadFile<LINE extends Line<?>> implements CharSequence {
 	/**
 	 * The list of lines, backing a file
 	 */
@@ -33,7 +34,7 @@ public class ReadFile<LINE extends Line<?>, TAB> implements CharSequence {
 	/**
 	 * The tabwidth of this file
 	 */
-	public final TAB tabwidth;
+	private final EredmelConfiguration config;
 	/**
 	 * A struct constructor that copies the arguments over to the final fields.
 	 * 
@@ -44,7 +45,7 @@ public class ReadFile<LINE extends Line<?>, TAB> implements CharSequence {
 	 * @param tabwidth
 	 *        The tabwidth of this file
 	 */
-	ReadFile(List<LINE> lines, TAB tabwidth) {
+	ReadFile(List<LINE> lines, EredmelConfiguration config) {
 		this.lines = lines;
 		List<Integer> offsets = new ArrayList<>();
 		int off = 0;
@@ -56,7 +57,7 @@ public class ReadFile<LINE extends Line<?>, TAB> implements CharSequence {
 		}
 		offsets.add(off);
 		this.offsets = offsets;
-		this.tabwidth = tabwidth;
+		this.config = config;
 	}
 	/**
 	 * Gets the line at the line number in the <i>current</i> representation,
@@ -100,10 +101,10 @@ public class ReadFile<LINE extends Line<?>, TAB> implements CharSequence {
 	 *        the other file to attach to this one
 	 * @return the concatenation of this file and other
 	 */
-	public ReadFile<LINE, TAB> concat(ReadFile<LINE, TAB> other) {
+	public ReadFile<LINE> concat(ReadFile<LINE> other) {
 		ArrayList<LINE> lines = new ArrayList<>(this.lines);
 		lines.addAll(other.lines);
-		return new ReadFile<>(lines, this.tabwidth);
+		return new ReadFile<>(lines, this.config);
 	}
 	/**
 	 * Replaces the given file with a string representation and returns a file
@@ -115,8 +116,8 @@ public class ReadFile<LINE extends Line<?>, TAB> implements CharSequence {
 	 *        the string to replace it with
 	 * @return the file with lines replaced and numbers scaled linearly
 	 */
-	public static <TAB> ReadFile<EredmelLine, Integer> replace(
-			ReadFile<EredmelLine, Integer> replThis, String replWith) {
+	public static ReadFile<EredmelLine> replace(
+			ReadFile<EredmelLine> replThis, String replWith) {
 		ArrayList<String> replWithLines = new ArrayList<>();
 		int lastTerm = 0;
 		for (int i = 0; i < replWith.length(); i++) {
@@ -140,12 +141,13 @@ public class ReadFile<LINE extends Line<?>, TAB> implements CharSequence {
 		ArrayList<EredmelLine> replThisLines = new ArrayList<>();
 		for (int i = 0; i < replWithLines.size(); i++) {
 			EredmelLine origReprLine = orReprLines.get((int) (scale * i));
-			EredmelLine replWithLIne = new NumberedLine(origReprLine.path,
+			EredmelLine replWithLine = new NumberedLine(origReprLine.path,
 					origReprLine.lineNumber, replWithLines.get(i))
-					.countWhitespace().applyTabwidth(replThis.tabwidth);
-			replThisLines.add(replWithLIne);
+					.countWhitespace().applyTabwidth(
+							replThis.config.tabwidth());
+			replThisLines.add(replWithLine);
 		}
-		return new ReadFile<>(replThisLines, replThis.tabwidth);
+		return new ReadFile<>(replThisLines, replThis.config);
 	}
 	/**
 	 * Gets the line and column numbers associated with the given index
@@ -191,6 +193,10 @@ public class ReadFile<LINE extends Line<?>, TAB> implements CharSequence {
 	private LINE subLine(int line, int start) {
 		return subLine(line, start, lines.get(line).length());
 	}
+	public EredmelConfiguration config() {
+		// TODO Can be lazified
+		return config.clone();
+	}
 	@Override
 	public char charAt(int index) {
 		Pair<Integer, Integer> lineCol = lineCol(index);
@@ -201,20 +207,20 @@ public class ReadFile<LINE extends Line<?>, TAB> implements CharSequence {
 		return offsets.get(lines.size());
 	}
 	@Override
-	public ReadFile<LINE, TAB> subSequence(int start, int end) {
+	public ReadFile<LINE> subSequence(int start, int end) {
 		Pair<Integer, Integer> stLC = lineCol(start), endLC = lineCol(end);
 		if (stLC.key.intValue() == endLC.key.intValue()) {
 			if (stLC.value.intValue() == endLC.value.intValue())
-				return new ReadFile<>(new ArrayList<>(), tabwidth);
+				return new ReadFile<>(new ArrayList<>(), config);
 			return new ReadFile<>(Arrays.asList(subLine(stLC.key,
-					stLC.value, endLC.value)), tabwidth);
+					stLC.value, endLC.value)), config);
 		}
 		List<LINE> lines = new ArrayList<>();
 		lines.add(subLine(stLC.key, stLC.value));
 		lines.addAll(this.lines.subList(stLC.key + 1, endLC.key));
 		if (!endLC.value.equals(0))
 			lines.add(subLine(endLC.key, 0, endLC.value));
-		return new ReadFile<>(lines, tabwidth);
+		return new ReadFile<>(lines, config);
 	}
 	@Override
 	public String toString() {

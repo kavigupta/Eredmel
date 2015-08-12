@@ -1,4 +1,4 @@
-##replace ~^'ifdef \s* (.+)
+replace ~^'ifdef \s* (.+)
 	if def($1)
 
 ifdef x

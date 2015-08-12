@@ -1,4 +1,4 @@
-## tabwidth = 4
+config: tabwidth = 4
 tabs should be
         considered default
         and not normalized

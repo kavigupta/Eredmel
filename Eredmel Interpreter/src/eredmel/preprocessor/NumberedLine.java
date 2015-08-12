@@ -61,4 +61,8 @@ public class NumberedLine extends Line<NumberedLine> {
 	public NumberedLine subSequence(int start, int end) {
 		return new NumberedLine(path, lineNumber, line.substring(start, end));
 	}
+	@Override
+	public String toString() {
+		return line;
+	}
 }

@@ -57,15 +57,13 @@ public class NormalizerTest {
 	}
 	public static void testNormalization(int expectedTabwidth, String... paths) {
 		try {
-			ReadFile<NumberedLine, Void> original = readAll(paths[0]);
-			ReadFile<NumberedLine, Void> normExpected = readAll(paths.length == 1 ? "normalized.edmh"
+			ReadFile<NumberedLine> original = readAll(paths[0]);
+			ReadFile<NumberedLine> normExpected = readAll(paths.length == 1 ? "normalized.edmh"
 					: paths[1]);
-			ReadFile<EredmelLine, Integer> normActual = EredmelPreprocessor
+			ReadFile<EredmelLine> normActual = EredmelPreprocessor
 					.normalize(original);
-			assertEquals("File Size", normExpected.numLines(),
-					normActual.numLines());
-			assertEquals("Tabwidth", expectedTabwidth,
-					normActual.tabwidth.intValue());
+			assertEquals("Tabwidth", expectedTabwidth, normActual.config()
+					.tabwidth());
 			for (int i = 0; i < normExpected.numLines(); i++) {
 				assertEquals(format("Line %s:", i),
 						normExpected.lineAt(i).line, normActual.lineAt(i)
@@ -75,7 +73,7 @@ public class NormalizerTest {
 			throw new AssertionError(e);
 		}
 	}
-	public static ReadFile<NumberedLine, Void> readAll(String path)
+	public static ReadFile<NumberedLine> readAll(String path)
 			throws IOException, URISyntaxException {
 		return EredmelPreprocessor.readFile(Paths
 				.get("eg/normalizer/" + path));

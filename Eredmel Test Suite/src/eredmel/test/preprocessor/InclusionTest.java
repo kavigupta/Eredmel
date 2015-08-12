@@ -67,8 +67,8 @@ public class InclusionTest {
 	public static void testInclusionError(String path, EredmelMessage expect) {
 		log.clear();
 		try {
-			ReadFile<EredmelLine, Integer> file = EredmelPreprocessor
-					.loadFile(Paths.get(relative(path)), new ArrayList<>());
+			ReadFile<EredmelLine> file = EredmelPreprocessor.loadFile(
+					Paths.get(relative(path)), new ArrayList<>());
 			System.out.println(file);
 		} catch (Throwable t) {
 			assertTrue("Has message", log.containsMessage());
@@ -83,20 +83,21 @@ public class InclusionTest {
 		throw new AssertionError("No error raised");
 	}
 	public static void testInclusion(String path) {
-		ReadFile<NumberedLine, Void> normExpected;
+		ReadFile<NumberedLine> normExpected;
 		try {
 			normExpected = EredmelPreprocessor.readFile(Paths
 					.get(relative(path) + "i"));
 		} catch (IOException e) {
 			throw new RuntimeException(e);
 		}
-		ReadFile<EredmelLine, Integer> normActual = EredmelPreprocessor
-				.loadFile(Paths.get(relative(path)), new ArrayList<>());
+		ReadFile<EredmelLine> normActual = EredmelPreprocessor.loadFile(
+				Paths.get(relative(path)), new ArrayList<>());
 		for (int i = 0; i < normExpected.numLines(); i++) {
 			assertEquals(format("Line %s:", i), normExpected.lineAt(i).line,
 					normActual.lineAt(i).displayWithTabs());
 		}
-		assertEquals("File Size", normExpected.numLines(), normActual.numLines());
+		assertEquals("File Size", normExpected.numLines(),
+				normActual.numLines());
 	}
 	private static String relative(String path) {
 		return "eg/inclusion/" + path;

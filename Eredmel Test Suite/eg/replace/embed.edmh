@@ -1,10 +1,10 @@
-##replacelit @integer
+replacelit @integer
 	(?:\+|-)?\d+
 
-##replacelit @decimal
+replacelit @decimal
 	@integer(?:\.\d*)?(?:e@integer)?
 
-##replace (@decimal)\s*\+\s*(@decimal)~^'
+replace (@decimal)\s*\+\s*(@decimal)~^'
 	___add($1, $2)
 
 @integer	@decimal

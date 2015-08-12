@@ -7,6 +7,8 @@ import java.util.*;
 import java.util.Map.Entry;
 import java.util.stream.Collectors;
 
+import eredmel.config.EredmelConfiguration;
+import eredmel.config.EredmelConfiguration.ConfigSetting;
 import eredmel.logger.EredmelMessage;
 import eredmel.regex.EnregexType;
 import eredmel.regex.Matcher;
@@ -27,27 +29,34 @@ public final class EredmelPreprocessor {
 	private EredmelPreprocessor() {}
 	/**
 	 * Matches a tabwidth statement at the top of the document, which has the
-	 * form {@code ##tabwidth = theTabwidth}, with any number of spaces
+	 * form {@code tabwidth = theTabwidth}, with any number of spaces
 	 * permissible between tokens or before the statement
+	 * 
 	 */
-	private static final Pattern TABWIDTH = Pattern
-			.compile("^\\s*##\\s*tabwidth\\s*=\\s*(?<tabwidth>\\d+)\\s*$");
+	public static final String CONFIG = "config:\\s*(?<name>[A-Za-z_][A-Za-z0-9_]*)\\s*=\\s*(?<value>\\S+)\\s*$";
 	/**
 	 * Matches an inclusion statement, which has the form
-	 * {@code ##include "pathToInclude"}, with any number of spaces permissible
+	 * {@code include "pathToInclude"}, with any number of spaces permissible
 	 * between segments
 	 */
-	private static final Pattern INCLUDE = Pattern
-			.compile("^\\s*##\\s*include\\s*\"(?<path>.+)\"\\s*$");
+	private static final String INCLUDE = "include\\s*\"(?<path>.+)\"\\s*$";
 	/**
 	 * Matches the a replacement statement, which has the form
-	 * {@code ##replace <enregex>\n\t<replacement>}, with any number of spaces
-	 * permissible between segments
+	 * {@code replace[lit] <enregex>\n\t<replacement>}, with any number of
+	 * spaces
+	 * permissible between segments.
+	 * 
+	 * The replacement string is interpreted literally if {@code replacelit} is
+	 * used. However, if {@code replace} is used, it will be treated as a
+	 * normal regex replacement string with one exception: {@code \n} and
+	 * {@code \t} will represent a new line and an indentation level rather
+	 * than {@code n} and {@code t} as they would have otherwise.
 	 */
-	private static final Pattern REPLACE = Pattern
-			.compile("##\\s*replace(?<lit>lit)?(?<enregex>.+)\n\t(?<repl>.+)\n");
+	private static final String REPLACE = "replace(?<lit>lit)?(?<enregex>.+)\n\t(?<repl>.+)\n";
 	/**
-	 * Reads a file into memory, and assign numbers to lines
+	 * Reads a file into memory, and assign numbers to lines. Each line will be
+	 * terminated with a new line ({@code \n}) regardless of it's original
+	 * terminating character
 	 * 
 	 * @param path
 	 *        the file to read
@@ -56,21 +65,21 @@ public final class EredmelPreprocessor {
 	 * @throws IOException
 	 *         if there was an error in reading the file
 	 */
-	public static ReadFile<NumberedLine, Void> readFile(Path path)
+	public static ReadFile<NumberedLine> readFile(Path path)
 			throws IOException {
 		List<String> lines = Files.readAllLines(path);
 		List<NumberedLine> numbered = new ArrayList<>(lines.size());
 		for (int i = 0; i < lines.size(); i++) {
 			numbered.add(new NumberedLine(path, i, lines.get(i) + '\n'));
 		}
-		return new ReadFile<>(numbered, null);
+		return new ReadFile<>(numbered, new EredmelConfiguration());
 	}
 	/**
 	 * Normalizes a given Eredmel file.
 	 * 
 	 * Normalization consists of stripping out opening empty lines (or lines
 	 * containing only whitespace), interpreting a tabwidth statement (which
-	 * takes the form {@code ##tabwidth = <number>}.
+	 * takes the form {@code tabwidth = <number>}. TODO configuration
 	 * 
 	 * The normalizer then goes through each line and counts the number of tabs
 	 * and spaces which it contains. If tabwidth was not defined, it tries to
@@ -90,11 +99,12 @@ public final class EredmelPreprocessor {
 	 *         declared, implicitly calculated, or (when there are no declaring
 	 *         spaces), 4.
 	 */
-	public static ReadFile<EredmelLine, Integer> normalize(
-			ReadFile<NumberedLine, Void> toNormalize) {
-		ReadFile<MeasuredLine, Optional<Integer>> countedStart = countWhitespace(processTabwidth(toNormalize));
+	public static ReadFile<EredmelLine> normalize(
+			ReadFile<NumberedLine> toNormalize) {
+		ReadFile<MeasuredLine> countedStart = countWhitespace(processConfig(toNormalize));
 		int tabwidth;
-		if (!countedStart.tabwidth.isPresent()) {
+		EredmelConfiguration config = countedStart.config();
+		if (!config.isDefined(ConfigSetting.TABWIDTH)) {
 			int gcf = 0;
 			for (MeasuredLine line : countedStart.lines)
 				gcf = MathUtils.gcf(gcf, line.spaces);
@@ -108,15 +118,14 @@ public final class EredmelPreprocessor {
 				EredmelMessage.guessAtTabwidth(tabwidth,
 						toNormalize.lineAt(0).path).log();
 			}
-		} else {
-			tabwidth = countedStart.tabwidth.get();
+			config.put(ConfigSetting.TABWIDTH, Integer.toString(tabwidth));
 		}
 		List<EredmelLine> normalized = new ArrayList<>(
 				countedStart.numLines());
 		for (MeasuredLine line : countedStart.lines) {
-			normalized.add(line.applyTabwidth(tabwidth));
+			normalized.add(line.applyTabwidth(config.tabwidth()));
 		}
-		return new ReadFile<>(normalized, tabwidth);
+		return new ReadFile<>(normalized, config);
 	}
 	/**
 	 * 
@@ -136,10 +145,10 @@ public final class EredmelPreprocessor {
 	 *         included completely, guaranteed to be the same size as
 	 *         {@code toRead}
 	 */
-	public static List<ReadFile<EredmelLine, Integer>> loadFiles(
-			List<Path> toRead, List<Path> linkedLibs) {
-		Map<Path, ReadFile<EredmelLine, Integer>> allLoaded = new HashMap<>();
-		List<ReadFile<EredmelLine, Integer>> requestedLoaded = new ArrayList<>();
+	public static List<ReadFile<EredmelLine>> loadFiles(List<Path> toRead,
+			List<Path> linkedLibs) {
+		Map<Path, ReadFile<EredmelLine>> allLoaded = new HashMap<>();
+		List<ReadFile<EredmelLine>> requestedLoaded = new ArrayList<>();
 		for (Path individual : toRead) {
 			requestedLoaded.add(loadFile(individual, linkedLibs, allLoaded,
 					new ArrayList<>()));
@@ -147,13 +156,13 @@ public final class EredmelPreprocessor {
 		return requestedLoaded;
 	}
 	/**
-	 * 
 	 * Loads a single Eredmel File into memory, normalizes it, and includes
-	 * other
-	 * files by loading them and dumping them into the file.
+	 * other files by loading them and dumping them into the file.
 	 * 
 	 * If a file is not found, an error occurs in reading the file, or a
-	 * circular reference is found, a warning or fatal error is raised.
+	 * circular reference is found, a high-level warning is raised (if the
+	 * working mode is one that allows continuing under those circumstances,
+	 * the file is simply not included)
 	 * 
 	 * @param toRead
 	 *        The file to load
@@ -162,11 +171,14 @@ public final class EredmelPreprocessor {
 	 * @return The file in memory, loaded completely with all other files
 	 *         included completely
 	 */
-	public static ReadFile<EredmelLine, Integer> loadFile(Path toRead,
+	public static ReadFile<EredmelLine> loadFile(Path toRead,
 			List<Path> linkedLibs) {
 		return loadFiles(Arrays.asList(toRead), linkedLibs).get(0);
 	}
 	/**
+	 * Loads a file into memory, first checking to see if it has already been
+	 * loaded.
+	 * 
 	 * @param toRead
 	 *        the file to read
 	 * @param loadedFiles
@@ -180,13 +192,13 @@ public final class EredmelPreprocessor {
 	 * @return the file loaded into memory
 	 * 
 	 */
-	private static ReadFile<EredmelLine, Integer> loadFile(Path toRead,
+	private static ReadFile<EredmelLine> loadFile(Path toRead,
 			List<Path> linkedLibs,
-			Map<Path, ReadFile<EredmelLine, Integer>> loadedFiles,
+			Map<Path, ReadFile<EredmelLine>> loadedFiles,
 			List<Path> inclusionChain) {
 		if (!Files.exists(toRead))
 			EredmelMessage.fileNotFound(toRead.toString(), toRead, 0).log();
-		for (Entry<Path, ReadFile<EredmelLine, Integer>> linkedFile : loadedFiles
+		for (Entry<Path, ReadFile<EredmelLine>> linkedFile : loadedFiles
 				.entrySet())
 			if (linkedFile.getKey().equals(toRead))
 				return linkedFile.getValue();
@@ -202,18 +214,20 @@ public final class EredmelPreprocessor {
 		}
 		inclusionChain = new ArrayList<>(inclusionChain);
 		inclusionChain.add(toRead);
-		ReadFile<EredmelLine, Integer> normalizedFile;
+		ReadFile<EredmelLine> normalizedFile;
 		try {
 			normalizedFile = normalize(readFile(toRead));
 		} catch (IOException e) {
 			EredmelMessage.errorLoadingFile(e, toRead).log();
 			// if this point in the code is released, return an empty file.
-			return new ReadFile<>(new ArrayList<>(), 4);
+			return new ReadFile<>(new ArrayList<>(),
+					new EredmelConfiguration());
 		}
 		List<EredmelLine> withInclusions = new ArrayList<>(
 				normalizedFile.numLines());
 		for (int i = 0; i < normalizedFile.numLines(); i++) {
-			Matcher inclusion = INCLUDE
+			Matcher inclusion = normalizedFile.config()
+					.patternMatch(INCLUDE, false)
 					.matcher(normalizedFile.lineAt(i).line);
 			if (!inclusion.find()) {
 				withInclusions.add(normalizedFile.lineAt(i));
@@ -230,19 +244,19 @@ public final class EredmelPreprocessor {
 			withInclusions.addAll(loadFile(optPath.get(), linkedLibs,
 					loadedFiles, inclusionChain).lines);
 		}
-		ReadFile<EredmelLine, Integer> file = new ReadFile<>(withInclusions,
-				normalizedFile.tabwidth);
+		ReadFile<EredmelLine> file = new ReadFile<>(withInclusions,
+				normalizedFile.config());
 		loadedFiles.put(toRead, file);
 		return file;
 	}
 	/**
 	 * Measures each line for how many tabs and spaces it has
 	 */
-	private static <T> ReadFile<MeasuredLine, T> countWhitespace(
-			ReadFile<NumberedLine, T> norm) {
+	private static ReadFile<MeasuredLine> countWhitespace(
+			ReadFile<NumberedLine> norm) {
 		return new ReadFile<>(norm.lines.stream()
 				.map(NumberedLine::countWhitespace)
-				.collect(Collectors.toList()), norm.tabwidth);
+				.collect(Collectors.toList()), norm.config());
 	}
 	/**
 	 * Gets the tabwidth and consumes a tabwidth statement
@@ -254,59 +268,53 @@ public final class EredmelPreprocessor {
 	 *         returns the specified Optional.of(width). Otherwise, it returns
 	 *         Optional.none()
 	 */
-	private static ReadFile<NumberedLine, Optional<Integer>> processTabwidth(
-			ReadFile<NumberedLine, Void> original) {
+	private static ReadFile<NumberedLine> processConfig(
+			ReadFile<NumberedLine> original) {
+		EredmelConfiguration config = original.config();
+		Pattern configMatch = config.patternMatch(CONFIG, false);
 		int i = 0;
-		while (i < original.numLines()
-				&& original.lineAt(i).line.trim().length() == 0)
-			i++;
-		if (i < original.numLines()) {
-			Matcher mat = TABWIDTH.matcher(original.lineAt(i).line);
-			if (mat.find()) {
-				i++;
-				return new ReadFile<>(original.lines.subList(i,
-						original.numLines()), Optional.of(Integer
-						.parseInt(mat.group("tabwidth"))));
-			}
+		for (i = 0; i < original.numLines(); i++) {
+			if (original.lineAt(i).line.trim().length() == 0) continue;
+			Matcher mat = configMatch.matcher(original.lineAt(i));
+			if (!mat.find()) break;
+			config.put(ConfigSetting.fromConfigString(mat.group("name")),
+					mat.group("value"));
 		}
 		return new ReadFile<>(original.lines.subList(i, original.numLines()),
-				Optional.empty());
+				config);
 	}
 	/**
-	 * Applies the {@code ##replace} and {@code ##replacelit} statements in
+	 * Applies the {@code replace} and {@code replacelit} statements in
 	 * this file one-by-one to the text below them, recursively.
 	 * 
-	 * TODO: Future versions may implement an END to the algorithmic scope
+	 * TODO: Future versions may implement an END to the replacement scope
 	 * 
 	 * @param preReplace
-	 *        the file before {@code ##replace[lit]} statements have been
+	 *        the file before {@code replace[lit]} statements have been
 	 *        applied
-	 * @replace the file after {@code ##replace[lit]} statements have been
+	 * @replace the file after {@code replace[lit]} statements have been
 	 *          applied
 	 */
-	public static ReadFile<EredmelLine, Integer> applyReplaces(
-			ReadFile<EredmelLine, Integer> preReplace) {
-		ReadFile<EredmelLine, Integer> processed = new ReadFile<>(
-				new ArrayList<>(), preReplace.tabwidth);
+	public static ReadFile<EredmelLine> applyReplaces(
+			ReadFile<EredmelLine> preReplace) {
+		ReadFile<EredmelLine> processed = new ReadFile<>(new ArrayList<>(),
+				preReplace.config());
 		// the reason for this structure is the regexes are self-modifying
 		while (true) {
-			Matcher findRepl = REPLACE.matcher(preReplace);
+			Matcher findRepl = processed.config()
+					.patternMatch(REPLACE, false).matcher(preReplace);
 			if (!findRepl.find()) {
-				System.out.println("FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF");
-				System.out.println("No match found for REPLACE in:");
-				System.out.println(preReplace);
 				break;
-			} // no \##replace
+			} // no replace
 			Pattern enregex = Pattern.compile(findRepl.group("enregex"),
 					Pattern.ENHANCED_REGEX | Pattern.COMMENTS,
 					EnregexType.EREDMEL_STANDARD);
-			System.out.println("Processing " + findRepl.group("enregex"));
 			boolean lit = findRepl.group("lit") != null
 					&& findRepl.group("lit").equals("lit");
 			String replace = findRepl.group("repl");
 			if (!lit)
 				replace = replace.replace("\\t", "\t").replace("\\n", "\n");
-			// pop \##replace off
+			// pop replace off
 			preReplace = preReplace.subSequence(findRepl.end(),
 					preReplace.length());
 			System.out.println(preReplace);
@@ -327,12 +335,12 @@ public final class EredmelPreprocessor {
 					// System.out.println(replacement);
 					// System.out.println("333333333333333333");
 				}
-				ReadFile<EredmelLine, Integer> beforeMatch = preReplace
-						.subSequence(0, replacer.start());
-				ReadFile<EredmelLine, Integer> match = preReplace
-						.subSequence(replacer.start(), replacer.end());
-				ReadFile<EredmelLine, Integer> afterMatch = preReplace
-						.subSequence(replacer.end(), preReplace.length());
+				ReadFile<EredmelLine> beforeMatch = preReplace.subSequence(
+						0, replacer.start());
+				ReadFile<EredmelLine> match = preReplace.subSequence(
+						replacer.start(), replacer.end());
+				ReadFile<EredmelLine> afterMatch = preReplace.subSequence(
+						replacer.end(), preReplace.length());
 				// System.out.println("-------------------");
 				// System.out.print(beforeMatch);
 				// System.out.print(match);
@@ -344,7 +352,7 @@ public final class EredmelPreprocessor {
 				// applies the replacements
 				// System.out.println("```````````````````");
 				// System.out.println(preReplace);
-				// System.out.println("###################");
+				// System.out.println(********************");
 				processed = processed.concat(beforeMatch);
 				preReplace = ReadFile.replace(match, replacement).concat(
 						afterMatch);
@@ -357,7 +365,7 @@ public final class EredmelPreprocessor {
 				// System.out.println(preReplace);
 			}
 			preReplace = processed.concat(preReplace);
-			processed = new ReadFile<>(new ArrayList<>(), processed.tabwidth);
+			processed = new ReadFile<>(new ArrayList<>(), processed.config());
 		}
 		processed = processed.concat(preReplace);
 		return processed;

@@ -27,14 +27,14 @@ public class ReplacerTest {
 		testReplace("recursive");
 	}
 	public static void testReplace(String path) {
-		ReadFile<NumberedLine, Void> replExpected;
+		ReadFile<NumberedLine> replExpected;
 		try {
 			replExpected = EredmelPreprocessor.readFile(Paths
 					.get(relative(path)));
 		} catch (IOException e) {
 			throw new RuntimeException(e);
 		}
-		ReadFile<EredmelLine, Integer> replActual = EredmelPreprocessor
+		ReadFile<EredmelLine> replActual = EredmelPreprocessor
 				.applyReplaces(EredmelPreprocessor.loadFile(
 						Paths.get(relative(path + ".edmh")),
 						new ArrayList<>()));
