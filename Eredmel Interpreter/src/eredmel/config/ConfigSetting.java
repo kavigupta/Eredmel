@@ -5,6 +5,8 @@ import java.util.function.Predicate;
 /**
  * An enumeration representing a setting, along with validation code, and
  * it's internal name in the code.
+ * 
+ * @author Kavi Gupta
  */
 public enum ConfigSetting {
 	/**
@@ -14,7 +16,8 @@ public enum ConfigSetting {
 	TABWIDTH("4", x -> x.matches("\\d+"), "tabwidth", ConfigSettingLevel.FILE),
 	/**
 	 * Represents the prefix that must preceed every line if it is to be
-	 * interpreted as an Eredmel command.
+	 * interpreted as an Eredmel command; this can be any valid regex that
+	 * works in both enhanced and non-enhanced modes.
 	 */
 	PREFIX("", x -> !x.matches(".+\\s.+"), "prefix",
 			ConfigSettingLevel.SESSION);
