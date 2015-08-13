@@ -13,6 +13,12 @@ import eredmel.regex.Pattern;
  */
 public class EredmelConfiguration {
 	private HashMap<ConfigSetting, String> config;
+	/**
+	 * Gets a default configuration
+	 * 
+	 * @return a configuration where all settings are unset, so will revert to
+	 *         their defaults
+	 */
 	public static EredmelConfiguration getDefault() {
 		return new EredmelConfiguration(new HashMap<>());
 	}
@@ -87,7 +93,8 @@ public class EredmelConfiguration {
 	 * Unsets all the configuration values except for those that are
 	 * system-level
 	 * 
-	 * @return
+	 * @return a clone of this configuration setting with nothing but session
+	 *         information
 	 */
 	public EredmelConfiguration preserveOnlySession() {
 		HashMap<ConfigSetting, String> globals = new HashMap<>();

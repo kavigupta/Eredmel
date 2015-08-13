@@ -2,6 +2,8 @@ package eredmel.config;
 
 /**
  * Encodes information about where a level should apply
+ * 
+ * @author Kavi Gupta
  */
 public enum ConfigSettingLevel {
 	/**
