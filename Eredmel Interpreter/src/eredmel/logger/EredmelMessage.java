@@ -6,7 +6,7 @@ import java.nio.file.Paths;
 import java.util.List;
 import java.util.Optional;
 
-import eredmel.config.EredmelConfiguration.ConfigSetting;
+import eredmel.config.ConfigSetting;
 import eredmel.preprocessor.NumberedLine;
 
 /**

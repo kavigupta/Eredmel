@@ -8,6 +8,7 @@ import java.util.ArrayList;
 
 import org.junit.Test;
 
+import eredmel.config.EredmelConfiguration;
 import eredmel.preprocessor.EredmelLine;
 import eredmel.preprocessor.EredmelPreprocessor;
 import eredmel.preprocessor.NumberedLine;
@@ -29,15 +30,17 @@ public class ReplacerTest {
 	public static void testReplace(String path) {
 		ReadFile<NumberedLine> replExpected;
 		try {
-			replExpected = EredmelPreprocessor.readFile(Paths
-					.get(relative(path)));
+			replExpected = EredmelPreprocessor.readFile(
+					Paths.get(relative(path)),
+					EredmelConfiguration.getDefault());
 		} catch (IOException e) {
 			throw new RuntimeException(e);
 		}
 		ReadFile<EredmelLine> replActual = EredmelPreprocessor
 				.applyReplaces(EredmelPreprocessor.loadFile(
 						Paths.get(relative(path + ".edmh")),
-						new ArrayList<>()));
+						new ArrayList<>(),
+						EredmelConfiguration.getDefault()));
 		assertEquals(replExpected.toString(), replActual.toString());
 	}
 	private static String relative(String path) {

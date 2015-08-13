@@ -9,6 +9,7 @@ import java.nio.file.Paths;
 
 import org.junit.Test;
 
+import eredmel.config.EredmelConfiguration;
 import eredmel.preprocessor.EredmelLine;
 import eredmel.preprocessor.EredmelPreprocessor;
 import eredmel.preprocessor.NumberedLine;
@@ -75,7 +76,8 @@ public class NormalizerTest {
 	}
 	public static ReadFile<NumberedLine> readAll(String path)
 			throws IOException, URISyntaxException {
-		return EredmelPreprocessor.readFile(Paths
-				.get("eg/normalizer/" + path));
+		return EredmelPreprocessor.readFile(
+				Paths.get("eg/normalizer/" + path),
+				EredmelConfiguration.getDefault());
 	}
 }
