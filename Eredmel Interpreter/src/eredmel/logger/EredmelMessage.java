@@ -6,6 +6,9 @@ import java.nio.file.Paths;
 import java.util.List;
 import java.util.Optional;
 
+import eredmel.config.EredmelConfiguration.ConfigSetting;
+import eredmel.preprocessor.NumberedLine;
+
 /**
  * A class representing a message
  * 
@@ -136,6 +139,24 @@ public final class EredmelMessage {
 				String.format(
 						"The number of spaces %s is not a multiple of the declared tabwidth %s and will be rounded",
 						spaces, tabwidth), file, line, Optional.empty());
+	}
+	/**
+	 * A configuration setting did not pass validation
+	 * 
+	 * @param setting
+	 *        the setting
+	 * @param value
+	 *        the value that did not pass
+	 * @param line
+	 *        the line in which the setting did not pass validation
+	 * @return a high level warning, since configuration settings can have
+	 *         massive effects
+	 */
+	public static EredmelMessage invalidConfigurationSetting(
+			ConfigSetting setting, String value, NumberedLine line) {
+		return new EredmelMessage(LoggingLevel.HIGH, String.format(
+				"%s is not a valid value for the setting %s", value,
+				setting), line.path(), line.lineNumber(), Optional.empty());
 	}
 	/**
 	 * The logging level used by this message

@@ -118,7 +118,11 @@ public final class EredmelPreprocessor {
 				EredmelMessage.guessAtTabwidth(tabwidth,
 						toNormalize.lineAt(0).path).log();
 			}
-			config.put(ConfigSetting.TABWIDTH, Integer.toString(tabwidth));
+			boolean validated = config.add(ConfigSetting.TABWIDTH,
+					Integer.toString(tabwidth));
+			assert validated : "Either the definition of TABWIDTH was changed,"
+					+ " or the code to produce it was, and they are now"
+					+ " unsychronized. Please file a bug report";
 		}
 		List<EredmelLine> normalized = new ArrayList<>(
 				countedStart.numLines());
@@ -227,7 +231,7 @@ public final class EredmelPreprocessor {
 				normalizedFile.numLines());
 		for (int i = 0; i < normalizedFile.numLines(); i++) {
 			Matcher inclusion = normalizedFile.config()
-					.patternMatch(INCLUDE, false)
+					.patternMatch(INCLUDE, 0)
 					.matcher(normalizedFile.lineAt(i).line);
 			if (!inclusion.find()) {
 				withInclusions.add(normalizedFile.lineAt(i));
@@ -271,14 +275,18 @@ public final class EredmelPreprocessor {
 	private static ReadFile<NumberedLine> processConfig(
 			ReadFile<NumberedLine> original) {
 		EredmelConfiguration config = original.config();
-		Pattern configMatch = config.patternMatch(CONFIG, false);
+		Pattern configMatch = config.patternMatch(CONFIG, 0);
 		int i = 0;
 		for (i = 0; i < original.numLines(); i++) {
 			if (original.lineAt(i).line.trim().length() == 0) continue;
 			Matcher mat = configMatch.matcher(original.lineAt(i));
 			if (!mat.find()) break;
-			config.put(ConfigSetting.fromConfigString(mat.group("name")),
-					mat.group("value"));
+			ConfigSetting econfig = ConfigSetting.fromConfigString(mat
+					.group("name"));
+			boolean validated = config.add(econfig, mat.group("value"));
+			if (!validated)
+				EredmelMessage.invalidConfigurationSetting(econfig,
+						mat.group("value"), original.lineAt(i)).log();
 		}
 		return new ReadFile<>(original.lines.subList(i, original.numLines()),
 				config);
@@ -301,8 +309,8 @@ public final class EredmelPreprocessor {
 				preReplace.config());
 		// the reason for this structure is the regexes are self-modifying
 		while (true) {
-			Matcher findRepl = processed.config()
-					.patternMatch(REPLACE, false).matcher(preReplace);
+			Matcher findRepl = processed.config().patternMatch(REPLACE, 0)
+					.matcher(preReplace);
 			if (!findRepl.find()) {
 				break;
 			} // no replace
