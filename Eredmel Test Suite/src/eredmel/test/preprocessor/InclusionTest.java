@@ -12,6 +12,7 @@ import java.util.Optional;
 import org.junit.Before;
 import org.junit.Test;
 
+import eredmel.config.EredmelConfiguration;
 import eredmel.logger.DebuggerLogger;
 import eredmel.logger.EredmelLogger;
 import eredmel.logger.EredmelMessage;
@@ -68,7 +69,8 @@ public class InclusionTest {
 		log.clear();
 		try {
 			ReadFile<EredmelLine> file = EredmelPreprocessor.loadFile(
-					Paths.get(relative(path)), new ArrayList<>());
+					Paths.get(relative(path)), new ArrayList<>(),
+					EredmelConfiguration.getDefault());
 			System.out.println(file);
 		} catch (Throwable t) {
 			assertTrue("Has message", log.containsMessage());
@@ -85,13 +87,15 @@ public class InclusionTest {
 	public static void testInclusion(String path) {
 		ReadFile<NumberedLine> normExpected;
 		try {
-			normExpected = EredmelPreprocessor.readFile(Paths
-					.get(relative(path) + "i"));
+			normExpected = EredmelPreprocessor.readFile(
+					Paths.get(relative(path) + "i"),
+					EredmelConfiguration.getDefault());
 		} catch (IOException e) {
 			throw new RuntimeException(e);
 		}
 		ReadFile<EredmelLine> normActual = EredmelPreprocessor.loadFile(
-				Paths.get(relative(path)), new ArrayList<>());
+				Paths.get(relative(path)), new ArrayList<>(),
+				EredmelConfiguration.getDefault());
 		for (int i = 0; i < normExpected.numLines(); i++) {
 			assertEquals(format("Line %s:", i), normExpected.lineAt(i).line,
 					normActual.lineAt(i).displayWithTabs());

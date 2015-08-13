@@ -1,7 +1,6 @@
 package eredmel.config;
 
 import java.util.HashMap;
-import java.util.function.Predicate;
 
 import eredmel.regex.EnregexType;
 import eredmel.regex.Pattern;
@@ -13,59 +12,15 @@ import eredmel.regex.Pattern;
  * @author Kavi Gupta
  */
 public class EredmelConfiguration {
-	/**
-	 * An enumeration representing a setting, along with validation code, and
-	 * it's internal name in the code.
-	 */
-	public static enum ConfigSetting {
-		/**
-		 * Represents the number of spaces in a tab to be used by the
-		 * normalizer and denormalizer in representing a file
-		 */
-		TABWIDTH("4", x -> x.matches("\\d+"), "tabwidth"),
-		/**
-		 * Represents the prefix that must preceed every line if it is to be
-		 * interpreted as an Eredmel command.
-		 */
-		PREFIX("", x -> !x.matches(".+\\s.+"), "prefix");
-		/**
-		 * The default value of this setting.
-		 */
-		public String defaultValue;
-		/**
-		 * Returns whether the given String would work for the given setting.
-		 */
-		Predicate<String> validator;
-		/**
-		 * The key used by the application to represent this configuration
-		 * setting.
-		 */
-		public String internalKey;
-		private ConfigSetting(String defaultValue,
-				Predicate<String> validation, String internalKey) {
-			this.defaultValue = defaultValue;
-			this.validator = validation;
-			this.internalKey = internalKey;
-		}
-		/**
-		 * Loads a setting based on an internal configuration setting string.
-		 * 
-		 * @param configSetting
-		 *        the setting string to use
-		 * @return the configuration setting tied to this setting string
-		 */
-		public static ConfigSetting fromConfigString(String configSetting) {
-			for (ConfigSetting set : values())
-				if (set.internalKey.equals(configSetting)) return set;
-			return null;
-		}
-	}
 	private HashMap<ConfigSetting, String> config;
+	public static EredmelConfiguration getDefault() {
+		return new EredmelConfiguration(new HashMap<>());
+	}
 	/**
-	 * Creates an empty configuration settings file
+	 * Creates a configuration settings file with the given backing map
 	 */
-	public EredmelConfiguration() {
-		config = new HashMap<>();
+	private EredmelConfiguration(HashMap<ConfigSetting, String> config) {
+		this.config = config;
 	}
 	/**
 	 * Adds a configuration setting to this file
@@ -77,14 +32,14 @@ public class EredmelConfiguration {
 	 * @return whether the value associated with the given setting is a valid
 	 *         match
 	 */
-	public boolean add(ConfigSetting setting, String value) {
+	public boolean set(ConfigSetting setting, String value) {
 		if (!setting.validator.test(value)) return false;
 		config.put(setting, value);
 		return true;
 	}
 	/**
 	 * Return whether a setting has been defined by a call to
-	 * {@link #add(ConfigSetting, String)}
+	 * {@link #set(ConfigSetting, String)}
 	 * 
 	 * @param setting
 	 *        the setting to check
@@ -128,14 +83,27 @@ public class EredmelConfiguration {
 		return Pattern.compile("^" + get(ConfigSetting.PREFIX) + regex, flags
 				| Pattern.MULTILINE, EnregexType.EREDMEL_STANDARD);
 	}
+	/**
+	 * Unsets all the configuration values except for those that are
+	 * system-level
+	 * 
+	 * @return
+	 */
+	public EredmelConfiguration preserveOnlySession() {
+		HashMap<ConfigSetting, String> globals = new HashMap<>();
+		this.config
+				.entrySet()
+				.stream()
+				.filter(x -> x.getKey().level == ConfigSettingLevel.SESSION)
+				.forEach(x -> globals.put(x.getKey(), x.getValue()));
+		return new EredmelConfiguration(globals);
+	}
 	@Override
 	public EredmelConfiguration clone() {
-		EredmelConfiguration copy = new EredmelConfiguration();
 		@SuppressWarnings("unchecked")
 		HashMap<ConfigSetting, String> mapClone = (HashMap<ConfigSetting, String>) this.config
 				.clone();
-		copy.config = mapClone;
-		return copy;
+		return new EredmelConfiguration(mapClone);
 	}
 	@Override
 	public int hashCode() {

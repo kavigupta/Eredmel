@@ -32,7 +32,9 @@ public class ReadFile<LINE extends Line<?>> implements CharSequence {
 	 */
 	final List<Integer> offsets;
 	/**
-	 * The tabwidth of this file
+	 * The configuration settings of this file. Since
+	 * {@code EredmelConfiguration} is non-immutable and this is, it is private
+	 * and references to it are limited
 	 */
 	private final EredmelConfiguration config;
 	/**
@@ -58,6 +60,12 @@ public class ReadFile<LINE extends Line<?>> implements CharSequence {
 		offsets.add(off);
 		this.offsets = offsets;
 		this.config = config;
+	}
+	<T extends Line<T>> ReadFile<T> copyConfig(List<T> lines) {
+		return new ReadFile<T>(lines, config);
+	}
+	public EredmelConfiguration config() {
+		return config.clone();
 	}
 	/**
 	 * Gets the line at the line number in the <i>current</i> representation,
@@ -192,10 +200,6 @@ public class ReadFile<LINE extends Line<?>> implements CharSequence {
 	 */
 	private LINE subLine(int line, int start) {
 		return subLine(line, start, lines.get(line).length());
-	}
-	public EredmelConfiguration config() {
-		// TODO Can be lazified
-		return config.clone();
 	}
 	@Override
 	public char charAt(int index) {
