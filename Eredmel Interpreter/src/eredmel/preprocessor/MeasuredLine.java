@@ -57,14 +57,6 @@ public class MeasuredLine extends Line<MeasuredLine> {
 		return new String(t) + new String(s) + restOfLine;
 	}
 	@Override
-	public int lineNumber() {
-		return lineNumber;
-	}
-	@Override
-	public Path path() {
-		return path;
-	}
-	@Override
 	public char charAt(int index) {
 		if (index < tabs) return '\t';
 		index -= tabs;
@@ -96,5 +88,28 @@ public class MeasuredLine extends Line<MeasuredLine> {
 		}
 		return new MeasuredLine(path, lineNumber, restOfLine.substring(start
 				- tabs - spaces, end - tabs - spaces), 0, 0);
+	}
+	@Override
+	public int hashCode() {
+		final int prime = 31;
+		int result = 1;
+		result = prime * result
+				+ ((restOfLine == null) ? 0 : restOfLine.hashCode());
+		result = prime * result + spaces;
+		result = prime * result + tabs;
+		return result;
+	}
+	@Override
+	public boolean equals(Object obj) {
+		if (this == obj) return true;
+		if (obj == null) return false;
+		if (getClass() != obj.getClass()) return false;
+		MeasuredLine other = (MeasuredLine) obj;
+		if (restOfLine == null) {
+			if (other.restOfLine != null) return false;
+		} else if (!restOfLine.equals(other.restOfLine)) return false;
+		if (spaces != other.spaces) return false;
+		if (tabs != other.tabs) return false;
+		return true;
 	}
 }

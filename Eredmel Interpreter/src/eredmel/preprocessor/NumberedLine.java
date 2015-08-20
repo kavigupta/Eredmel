@@ -42,14 +42,6 @@ public class NumberedLine extends Line<NumberedLine> {
 		return line;
 	}
 	@Override
-	public int lineNumber() {
-		return lineNumber;
-	}
-	@Override
-	public Path path() {
-		return path;
-	}
-	@Override
 	public char charAt(int index) {
 		return line.charAt(index);
 	}
@@ -62,7 +54,21 @@ public class NumberedLine extends Line<NumberedLine> {
 		return new NumberedLine(path, lineNumber, line.substring(start, end));
 	}
 	@Override
-	public String toString() {
-		return line;
+	public int hashCode() {
+		final int prime = 31;
+		int result = 1;
+		result = prime * result + ((line == null) ? 0 : line.hashCode());
+		return result;
+	}
+	@Override
+	public boolean equals(Object obj) {
+		if (this == obj) return true;
+		if (obj == null) return false;
+		if (getClass() != obj.getClass()) return false;
+		NumberedLine other = (NumberedLine) obj;
+		if (line == null) {
+			if (other.line != null) return false;
+		} else if (!line.equals(other.line)) return false;
+		return true;
 	}
 }

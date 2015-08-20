@@ -23,15 +23,11 @@ import eredmel.utils.math.MathUtils;
  * @author Kavi Gupta
  */
 public final class EredmelPreprocessor {
-	/**
-	 * Utility class non-constructor
-	 */
 	private EredmelPreprocessor() {}
 	/**
-	 * Matches a tabwidth statement at the top of the document, which has the
-	 * form {@code tabwidth = theTabwidth}, with any number of spaces
-	 * permissible between tokens or before the statement
-	 * 
+	 * Matches a configuration statement at the top of the document, which has
+	 * the form {@code config: name = value}, with any number of spaces
+	 * permissible between tokens
 	 */
 	public static final String CONFIG = "config:\\s*(?<name>[A-Za-z_][A-Za-z0-9_]*)\\s*=\\s*(?<value>\\S+)\\s*$";
 	/**
@@ -56,7 +52,8 @@ public final class EredmelPreprocessor {
 	/**
 	 * Reads a file into memory, and assign numbers to lines. Each line will be
 	 * terminated with a new line ({@code \n}) regardless of it's original
-	 * terminating character
+	 * terminating character, which is platform specific but will probably be
+	 * {@code \r?\n?}
 	 * 
 	 * @param path
 	 *        the file to read
@@ -78,8 +75,7 @@ public final class EredmelPreprocessor {
 	 * Normalizes a given Eredmel file.
 	 * 
 	 * Normalization consists of stripping out opening empty lines (or lines
-	 * containing only whitespace), interpreting a tabwidth statement (which
-	 * takes the form {@code tabwidth = <number>}. TODO configuration
+	 * containing only whitespace), and interpreting configuration settings.
 	 * 
 	 * The normalizer then goes through each line and counts the number of tabs
 	 * and spaces which it contains. If tabwidth was not defined, it tries to
@@ -232,7 +228,7 @@ public final class EredmelPreprocessor {
 				normalizedFile.numLines());
 		for (int i = 0; i < normalizedFile.numLines(); i++) {
 			Matcher inclusion = includePattern.matcher(normalizedFile
-					.lineAt(i).line);
+					.lineAt(i).canonicalRepresentation());
 			if (!inclusion.find()) {
 				withInclusions.add(normalizedFile.lineAt(i));
 				continue;

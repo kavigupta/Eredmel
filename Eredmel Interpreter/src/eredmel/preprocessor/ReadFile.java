@@ -142,7 +142,8 @@ public class ReadFile<LINE extends Line<?>> implements CharSequence {
 		for (int i = 0; i < replThis.numLines(); i++) {
 			orReprLines.add(replThis.lineAt(i));
 			while (i < replThis.numLines()
-					&& replThis.lineAt(i).line.contains("\n"))
+					&& replThis.lineAt(i).canonicalRepresentation()
+							.contains("\n"))
 				i++;
 		}
 		double scale = (double) orReprLines.size() / replWithLines.size();
